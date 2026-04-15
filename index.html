@@ -407,36 +407,10 @@
 </head>
 <body>
 
-<!-- LOCK SCREEN -->
-<div id="lockScreen">
-  <div class="lock-logo">ZarPay</div>
-  <div class="lock-subtitle">Система учёта зарплаты</div>
-  <div class="pin-dots">
-    <div class="pin-dot" id="d0"></div>
-    <div class="pin-dot" id="d1"></div>
-    <div class="pin-dot" id="d2"></div>
-    <div class="pin-dot" id="d3"></div>
-  </div>
-  <div class="pin-grid">
-    <button class="pin-btn" onclick="pp('1')">1</button>
-    <button class="pin-btn" onclick="pp('2')">2</button>
-    <button class="pin-btn" onclick="pp('3')">3</button>
-    <button class="pin-btn" onclick="pp('4')">4</button>
-    <button class="pin-btn" onclick="pp('5')">5</button>
-    <button class="pin-btn" onclick="pp('6')">6</button>
-    <button class="pin-btn" onclick="pp('7')">7</button>
-    <button class="pin-btn" onclick="pp('8')">8</button>
-    <button class="pin-btn" onclick="pp('9')">9</button>
-    <button class="pin-btn" onclick="pp('d')" style="color:var(--text3)">⌫</button>
-    <button class="pin-btn" onclick="pp('0')">0</button>
-    <button class="pin-btn" onclick="pp('ok')" style="background:var(--accent);color:white">OK</button>
-  </div>
-  <div class="pin-error" id="pinError"></div>
-  <div class="lock-hint">По умолчанию: 1234<br>Сменить в Настройках</div>
-</div>
+<!-- LOCK SCREEN REMOVED -->
 
 <!-- APP -->
-<div class="app-layout" id="app" style="display:none">
+<div class="app-layout" id="app" style="display:flex">
 
   <!-- SIDEBAR -->
   <nav class="sidebar" id="sidebar">
@@ -1562,6 +1536,8 @@ function notify(msg, type='success') {
 function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36); }
 
 // ==================== INIT ====================
+load();
+refreshAll();
 updateSidebarWeek();
 
 // Set today's date in shift modal
