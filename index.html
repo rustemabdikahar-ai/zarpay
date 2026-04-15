@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZarPay — Учёт зарплаты</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0f1e;--s1:#111827;--s2:#1a2236;--s3:#243044;
+  --b1:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.13);
+  --acc:#3b82f6;--grn:#10b981;--red:#ef4444;--yel:#f59e0b;--pur:#8b5cf6;
+  --t1:#f1f5f9;--t2:#94a3b8;--t3:#64748b;
+  --r:12px;--r2:8px;
+}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden}
+.layout{display:flex;min-height:100vh}
+.sidebar{width:240px;background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
+.logo{padding:24px 20px;font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent;border-bottom:1px solid var(--b1)}
+.logo small{display:block;font-size:10px;color:var(--t3);-webkit-text-fill-color:var(--t3);font-family:'Manrope',sans-serif;font-weight:400;margin-top:2px}
+.nav-g{padding:12px 10px 4px}
+.nav-lbl{font-size:10px;color:var(--t3);font-weight:600;text-transform:uppercase;letter-spacing:1.2px;padding:0 10px;margin-bottom:4px}
+.nav-i{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r2);cursor:pointer;color:var(--t2);font-size:13px;font-weight:500;margin-bottom:2px;transition:all .15s;user-select:none}
+.nav-i:hover{background:var(--s2);color:var(--t1)}
+.nav-i.on{background:rgba(59,130,246,.13);color:var(--acc)}
+.nav-i .ic{width:30px;height:30px;border-radius:7px;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.nav-i.on .ic{background:rgba(59,130,246,.2)}
+.week-info{margin:auto 10px 12px;padding:14px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.2);border-radius:var(--r)}
+.week-info .wl{font-size:10px;color:var(--t3);margin-bottom:3px}
+.week-info .wd{font-size:12px;font-weight:600}
+.week-info .wn{font-size:11px;color:var(--acc);margin-top:2px}
+.main{margin-left:240px;flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{display:flex;align-items:center;gap:12px;padding:14px 28px;border-bottom:1px solid var(--b1);background:rgba(10,15,30,.85);backdrop-filter:blur(10px);position:sticky;top:0;z-index:50}
+.topbar-title{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:600;flex:1}
+.page{padding:28px;display:none}
+.page.on{display:block}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:var(--r2);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s;white-space:nowrap;user-select:none}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--acc);color:#fff}.btn-p:hover{background:#2563eb}
+.btn-s{background:var(--s2);color:var(--t2);border:1px solid var(--b2)}.btn-s:hover{background:var(--s3);color:var(--t1)}
+.btn-g{background:var(--grn);color:#fff}.btn-g:hover{background:#059669}
+.btn-d{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}.btn-d:hover{background:rgba(239,68,68,.2)}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-ic{padding:7px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px}
+.scard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:18px;position:relative;overflow:hidden}
+.scard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.scard.bl::before{background:linear-gradient(90deg,var(--acc),transparent)}
+.scard.gr::before{background:linear-gradient(90deg,var(--grn),transparent)}
+.scard.ye::before{background:linear-gradient(90deg,var(--yel),transparent)}
+.scard.pu::before{background:linear-gradient(90deg,var(--pur),transparent)}
+.scard-ico{font-size:22px;margin-bottom:10px}
+.scard-val{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;margin-bottom:3px}
+.scard-lbl{font-size:11px;color:var(--t3)}
+.tw{overflow-x:auto;border-radius:var(--r);border:1px solid var(--b1)}
+table{width:100%;border-collapse:collapse}
+th{padding:11px 14px;text-align:left;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;background:var(--s2);border-bottom:1px solid var(--b1);white-space:nowrap}
+td{padding:12px 14px;font-size:13px;border-bottom:1px solid var(--b1);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.015)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:600}
+.bh{background:rgba(59,130,246,.15);color:#3b82f6}
+.bk{background:rgba(245,158,11,.15);color:#f59e0b}
+.br{background:var(--s3);color:var(--t2);border-radius:5px;padding:2px 7px}
+.bred{background:rgba(239,68,68,.12);color:var(--red)}
+.bgrn{background:rgba(16,185,129,.12);color:var(--grn)}
+.byel{background:rgba(245,158,11,.12);color:var(--yel)}
+.tabs{display:flex;gap:3px;background:var(--s2);border-radius:var(--r2);padding:3px;width:fit-content;margin-bottom:20px}
+.tab{padding:7px 18px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;color:var(--t3);transition:all .15s;user-select:none}
+.tab:hover{color:var(--t2)}
+.tab.on{background:var(--s3);color:var(--t1);box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center}
+.ov.on{display:flex}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:18px;padding:28px;width:460px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:sup .22s ease}
+@keyframes sup{from{transform:translateY(16px);opacity:0}}
+.mt{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;margin-bottom:22px}
+.fg{margin-bottom:14px}
+.fl{display:block;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.fi{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);color:var(--t1);font-family:'Manrope',sans-serif;font-size:13px;padding:9px 12px;width:100%;outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--acc)}
+.fi option{background:var(--s2)}
+.ma{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.empty{text-align:center;padding:50px 20px;color:var(--t3)}
+.empty .ei{font-size:40px;margin-bottom:12px}
+.empty p{font-size:13px}
+.notif{position:fixed;bottom:20px;right:20px;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);padding:12px 18px;font-size:13px;font-weight:500;z-index:9000;animation:sup .25s ease;max-width:300px}
+.notif.ok{border-color:rgba(16,185,129,.35)}
+.notif.er{border-color:rgba(239,68,68,.35)}
+.hcard{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:18px;display:flex;align-items:center;gap:14px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+.hcard:hover{border-color:var(--acc)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sc2{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:16px;margin-bottom:12px}
+#printZone{display:none}
+@media print{body>*{display:none!important}#printZone{display:block!important;position:fixed;inset:0;background:#fff;color:#111;padding:24px;font-family:Arial,sans-serif;z-index:99999}}
+@media(max-width:900px){.sidebar{transform:translateX(-100%);transition:transform .25s}.sidebar.open{transform:translateX(0)}.main{margin-left:0}.stats{grid-template-columns:1fr 1fr}.page{padding:16px}#menuBtn{display:flex!important}}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="sidebar" id="sidebar">
+  <div class="logo">ZarPay <small>Учёт зарплаты v2.0</small></div>
+  <div class="nav-g">
+    <div class="nav-lbl">Главное</div>
+    <div class="nav-i on" id="ni-dash" onclick="go('dash')"><span class="ic">📊</span>Сводка</div>
+    <div class="nav-i" id="ni-week" onclick="go('week')"><span class="ic">📅</span>Текущая неделя</div>
+    <div class="nav-i" id="ni-staff" onclick="go('staff')"><span class="ic">👥</span>Сотрудники</div>
+  </div>
+  <div class="nav-g">
+    <div class="nav-lbl">Финансы</div>
+    <div class="nav-i" id="ni-ded" onclick="go('ded')"><span class="ic">💸</span>Удержания</div>
+    <div class="nav-i" id="ni-hist" onclick="go('hist')"><span class="ic">🗂️</span>История</div>
+  </div>
+  <div class="nav-g">
+    <div class="nav-lbl">Прочее</div>
+    <div class="nav-i" id="ni-set" onclick="go('set')"><span class="ic">⚙️</span>Настройки</div>
+  </div>
+  <div class="week-info">
+    <div class="wl">Текущая неделя</div>
+    <div class="wd" id="swDates">—</div>
+    <div class="wn" id="swNum">—</div>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <button class="btn btn-s btn-ic" id="menuBtn" style="display:none" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+    <div class="topbar-title" id="pageTitle">Сводка</div>
+    <div class="row">
+      <button class="btn btn-s" onclick="showModal('mNewWeek')">🔄 Новая неделя</button>
+      <button class="btn btn-s" onclick="exportXL(D.week.num)">⬇️ Excel</button>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div class="page on" id="p-dash">
+    <div class="stats">
+      <div class="scard bl"><div class="scard-ico">💰</div><div class="scard-val" id="dTotal">0 ₸</div><div class="scard-lbl">Фонд недели</div></div>
+      <div class="scard gr"><div class="scard-ico">👤</div><div class="scard-val" id="dStaff">0</div><div class="scard-lbl">Активных сотр.</div></div>
+      <div class="scard ye"><div class="scard-ico">🍽️</div><div class="scard-val" id="dHall">0 ₸</div><div class="scard-lbl">Зал</div></div>
+      <div class="scard pu"><div class="scard-ico">👨‍🍳</div><div class="scard-val" id="dKit">0 ₸</div><div class="scard-lbl">Кухня</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px">
+      <div><h3 style="font-size:13px;font-weight:700;margin-bottom:12px">🏆 Топ за неделю</h3><div id="dTop"></div></div>
+      <div><h3 style="font-size:13px;font-weight:700;margin-bottom:12px">📅 Смены сегодня</h3><div id="dToday"></div></div>
+    </div>
+    <div class="row">
+      <button class="btn btn-p" onclick="go('week')">📅 Открыть неделю</button>
+      <button class="btn btn-s" onclick="showModal('mNewWeek')">🔄 Новая неделя</button>
+      <button class="btn btn-s" onclick="exportXL(D.week.num)">⬇️ Excel</button>
+    </div>
+  </div>
+
+  <!-- WEEK -->
+  <div class="page" id="p-week">
+    <div class="row" style="margin-bottom:18px">
+      <div class="tabs">
+        <div class="tab on" onclick="setDT('all',this)">Все</div>
+        <div class="tab" onclick="setDT('hall',this)">🍽️ Зал</div>
+        <div class="tab" onclick="setDT('kitchen',this)">👨‍🍳 Кухня</div>
+      </div>
+      <div class="row" style="margin-left:auto">
+        <button class="btn btn-s btn-sm" onclick="exportXL(D.week.num)">⬇️ Excel</button>
+        <button class="btn btn-s btn-sm" onclick="openPrint()">🖨️ Печать</button>
+        <button class="btn btn-p btn-sm" onclick="showModal('mShift')">+ Добавить день</button>
+      </div>
+    </div>
+    <div id="weekBody"></div>
+  </div>
+
+  <!-- STAFF -->
+  <div class="page" id="p-staff">
+    <div class="row" style="margin-bottom:18px">
+      <button class="btn btn-p" onclick="showModal('mStaff')">+ Добавить сотрудника</button>
+      <div class="tabs" style="margin-bottom:0;margin-left:auto">
+        <div class="tab on" onclick="setST('all',this)">Все</div>
+        <div class="tab" onclick="setST('hall',this)">Зал</div>
+        <div class="tab" onclick="setST('kitchen',this)">Кухня</div>
+      </div>
+    </div>
+    <div class="tw"><table><thead><tr>
+      <th>ФИО</th><th>Отдел</th><th>Должность</th><th>Ставка/день</th><th>За неделю</th><th>Статус</th><th>Действия</th>
+    </tr></thead><tbody id="staffBody"></tbody></table></div>
+  </div>
+
+  <!-- DEDUCTIONS -->
+  <div class="page" id="p-ded">
+    <div class="row" style="margin-bottom:18px">
+      <button class="btn btn-p" onclick="showModal('mDed')">+ Удержание</button>
+      <button class="btn btn-s" onclick="showModal('mBulk')">👥 Групповое</button>
+    </div>
+    <div class="tw"><table><thead><tr>
+      <th>Сотрудник</th><th>Дата</th><th>Причина</th><th>Сумма</th><th>Неделя</th><th></th>
+    </tr></thead><tbody id="dedBody"></tbody></table></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="page" id="p-hist">
+    <p style="color:var(--t3);font-size:13px;margin-bottom:18px">Нажмите на неделю для экспорта в Excel.</p>
+    <div id="histBody"></div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="page" id="p-set">
+    <div class="sc2">
+      <b style="font-size:14px">🏢 Название заведения</b>
+      <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">Используется в печатных формах</p>
+      <div class="row">
+        <input class="fi" id="setName" style="max-width:280px" placeholder="Название ресторана">
+        <button class="btn btn-p" onclick="D.cfg.name=g('setName');save();notif('Сохранено ✓')">Сохранить</button>
+      </div>
+    </div>
+    <div class="sc2">
+      <b style="font-size:14px">🗑️ Удалить все данные</b>
+      <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">Необратимое действие</p>
+      <button class="btn btn-d" onclick="if(confirm('Удалить ВСЁ?')){localStorage.removeItem('zp2');location.reload()}">Удалить все данные</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="printZone"></div>
+
+<!-- MODALS -->
+<div class="ov" id="mStaff">
+  <div class="modal">
+    <div class="mt">👤 Новый сотрудник</div>
+    <div class="fg"><label class="fl">ФИО</label><input class="fi" id="sN" placeholder="Аружан Бекова"></div>
+    <div class="fg"><label class="fl">Отдел</label><select class="fi" id="sD"><option value="hall">🍽️ Зал</option><option value="kitchen">👨‍🍳 Кухня</option></select></div>
+    <div class="fg"><label class="fl">Должность</label><input class="fi" id="sR" placeholder="Администратор, Официант..."></div>
+    <div class="fg"><label class="fl">Базовая ставка за день (₸)</label><input class="fi" id="sW" type="number" placeholder="25000"></div>
+    <div class="ma"><button class="btn btn-s" onclick="closeModal('mStaff')">Отмена</button><button class="btn btn-p" onclick="addStaff()">Добавить</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mEditStaff">
+  <div class="modal">
+    <div class="mt">✏️ Редактировать</div>
+    <input type="hidden" id="eSid">
+    <div class="fg"><label class="fl">ФИО</label><input class="fi" id="eSN"></div>
+    <div class="fg"><label class="fl">Отдел</label><select class="fi" id="eSD"><option value="hall">🍽️ Зал</option><option value="kitchen">👨‍🍳 Кухня</option></select></div>
+    <div class="fg"><label class="fl">Должность</label><input class="fi" id="eSR"></div>
+    <div class="fg"><label class="fl">Ставка/день (₸)</label><input class="fi" id="eSW" type="number"></div>
+    <div class="fg"><label class="fl">Статус</label><select class="fi" id="eSS"><option value="1">Активный</option><option value="0">Неактивный</option></select></div>
+    <div class="ma"><button class="btn btn-s" onclick="closeModal('mEditStaff')">Отмена</button><button class="btn btn-p" onclick="saveStaff()">Сохранить</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mShift">
+  <div class="modal">
+    <div class="mt">📅 Добавить рабочий день</div>
+    <div class="fg"><label class="fl">Сотрудник</label><select class="fi" id="shSt" onchange="shAR()"></select></div>
+    <div class="fg"><label class="fl">Дата</label><input class="fi" id="shDt" type="date"></div>
+    <div class="fg"><label class="fl">Смена</label>
+      <select class="fi" id="shM" onchange="shC()">
+        <option value="1">Полная смена (×1.0)</option>
+        <option value="0.5">Полсмены (×0.5)</option>
+        <option value="0.75">¾ смены (×0.75)</option>
+        <option value="1.5">Полтора смены (×1.5)</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Ставка за этот день (₸)</label><input class="fi" id="shR" type="number" oninput="shC()"></div>
+    <div class="fg"><label class="fl">Комментарий</label><input class="fi" id="shCm" placeholder="Опоздал, подмена..."></div>
+    <div style="background:var(--s2);border-radius:var(--r2);padding:12px;margin-bottom:4px">
+      <div style="font-size:11px;color:var(--t3)">К начислению</div>
+      <div style="font-size:22px;font-weight:700;font-family:'Unbounded',sans-serif;color:var(--grn)" id="shPrev">0 ₸</div>
+    </div>
+    <div class="ma"><button class="btn btn-s" onclick="closeModal('mShift')">Отмена</button><button class="btn btn-p" onclick="addShift()">Добавить</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mEditShift">
+  <div class="modal">
+    <div class="mt">✏️ Редактировать запись</div>
+    <input type="hidden" id="eShId">
+    <div class="fg"><label class="fl">Смена</label>
+      <select class="fi" id="eShM">
+        <option value="1">Полная смена (×1.0)</option>
+        <option value="0.5">Полсмены (×0.5)</option>
+        <option value="0.75">¾ смены (×0.75)</option>
+        <option value="1.5">Полтора смены (×1.5)</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Ставка за день (₸)</label><input class="fi" id="eShR" type="number"></div>
+    <div class="fg"><label class="fl">Комментарий</label><input class="fi" id="eShC"></div>
+    <div class="ma"><button class="btn btn-s" onclick="closeModal('mEditShift')">Отмена</button><button class="btn btn-p" onclick="saveShift()">Сохранить</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mDed">
+  <div class="modal">
+    <div class="mt">💸 Удержание</div>
+    <div class="fg"><label class="fl">Сотрудник</label><select class="fi" id="dSt"></select></div>
+    <div class="fg"><label class="fl">Причина</label><input class="fi" id="dRs" placeholder="За посуду, штраф..."></div>
+    <div class="fg"><label class="fl">Сумма (₸)</label><input class="fi" id="dAm" type="number" placeholder="2000"></div>
+    <div class="fg"><label class="fl">Дата</label><input class="fi" id="dDt" type="date"></div>
+    <div class="ma"><button class="btn btn-s" onclick="closeModal('mDed')">Отмена</button><button class="btn btn-p" onclick="addDed()">Добавить</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mBulk">
+  <div class="modal">
+    <div class="mt">👥 Групповое удержание</div>
+    <div class="fg"><label class="fl">Причина</label><input class="fi" id="bRs" placeholder="За посуду..."></div>
+    <div class="fg"><label class="fl">Сумма с каждого (₸)</label><input class="fi" id="bAm" type="number" placeholder="2000"></div>
+    <div class="fg"><label class="fl">Отдел</label><select class="fi" id="bDp"><option value="all">Все сотрудники</option><option value="hall">Только Зал</option><option value="kitchen">Только Кухня</option></select></div>
+    <div class="fg"><label class="fl">Дата</label><input class="fi" id="bDt" type="date"></div>
+    <div class="ma"><button class="btn btn-s" onclick="closeModal('mBulk')">Отмена</button><button class="btn btn-p" onclick="addBulk()">Применить</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mNewWeek">
+  <div class="modal">
+    <div class="mt">🔄 Начать новую неделю</div>
+    <p style="font-size:13px;color:var(--t2);margin-bottom:18px">Текущая неделя сохранится в истории</p>
+    <div class="fg"><label class="fl">Дата начала новой недели</label><input class="fi" id="nwDt" type="date"></div>
+    <div class="ma"><button class="btn btn-s" onclick="closeModal('mNewWeek')">Отмена</button><button class="btn btn-g" onclick="newWeek()">Начать</button></div>
+  </div>
+</div>
+
+<div class="ov" id="mPrint">
+  <div class="modal" style="width:680px">
+    <div class="mt">🖨️ Предпросмотр</div>
+    <div class="row" style="margin-bottom:14px">
+      <select class="fi" id="prSt" style="max-width:200px" onchange="rPrint()"><option value="all">Все сотрудники</option></select>
+      <button class="btn btn-s btn-sm" onclick="rPrint()">Обновить</button>
+    </div>
+    <div id="prBody" style="background:#fff;color:#111;border-radius:8px;padding:20px;max-height:55vh;overflow-y:auto;font-family:Arial,sans-serif"></div>
+    <div class="ma"><button class="btn btn-s" onclick="closeModal('mPrint')">Закрыть</button><button class="btn btn-p" onclick="doPrint()">🖨️ Печать</button></div>
+  </div>
+</div>
+
+<script>
+var D={staff:[],shifts:[],deds:[],history:[],week:{start:td(),num:1},cfg:{name:'Мой ресторан'}};
+var dF='all',sF='all';
+
+function td(){return new Date().toISOString().split('T')[0];}
+function uid(){return '_'+Math.random().toString(36).slice(2)+Date.now().toString(36);}
+function t₸(n){return Math.round(n||0).toLocaleString('ru-RU')+' ₸';}
+function fd(s){return s?new Date(s+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):''}
+function fdf(s){return s?new Date(s+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}):''}
+function fds(s){return s?new Date(s+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short'}):''}
+function wEnd(s){var d=new Date(s+'T12:00:00');d.setDate(d.getDate()+6);return d.toISOString().split('T')[0];}
+function g(id){return document.getElementById(id).value;}
+function byId(id){return D.staff.find(function(s){return s.id===id;});}
+
+function save(){try{localStorage.setItem('zp2',JSON.stringify(D));}catch(e){}}
+function load(){
+  try{var r=localStorage.getItem('zp2');if(r)D=JSON.parse(r);}catch(e){}
+  if(!D.week)D.week={start:td(),num:1};
+  if(!D.cfg)D.cfg={name:'Мой ресторан'};
+  if(!D.history)D.history=[];
+}
+
+var pages={dash:'Сводка',week:'Текущая неделя',staff:'Сотрудники',ded:'Удержания',hist:'История',set:'Настройки'};
+function go(p){
+  document.querySelectorAll('.page').forEach(function(el){el.classList.remove('on');});
+  document.querySelectorAll('.nav-i').forEach(function(el){el.classList.remove('on');});
+  document.getElementById('p-'+p).classList.add('on');
+  var ni=document.getElementById('ni-'+p);if(ni)ni.classList.add('on');
+  document.getElementById('pageTitle').textContent=pages[p]||p;
+  if(p==='dash')rdash();
+  if(p==='week')rweek();
+  if(p==='staff')rstaff();
+  if(p==='ded')rded();
+  if(p==='hist')rhist();
+  if(p==='set')document.getElementById('setName').value=D.cfg.name||'';
+}
+
+function winfo(){
+  var e=wEnd(D.week.start);
+  document.getElementById('swDates').textContent=fds(D.week.start)+' – '+fds(e);
+  document.getElementById('swNum').textContent='Неделя №'+D.week.num;
+}
+
+function rdash(){
+  var wn=D.week.num;
+  var sh=D.shifts.filter(function(s){return s.wn===wn;});
+  var dd=D.deds.filter(function(d){return d.wn===wn;});
+  var earned=sh.reduce(function(a,s){return a+s.earned;},0);
+  var dedt=dd.reduce(function(a,d){return a+d.amt;},0);
+  var hE=0,kE=0;
+  sh.forEach(function(s){var st=byId(s.sid);if(st){if(st.dept==='hall')hE+=s.earned;else kE+=s.earned;}});
+  document.getElementById('dTotal').textContent=t₸(earned-dedt);
+  document.getElementById('dStaff').textContent=D.staff.filter(function(s){return s.act;}).length;
+  document.getElementById('dHall').textContent=t₸(hE);
+  document.getElementById('dKit').textContent=t₸(kE);
+  var map={};
+  sh.forEach(function(s){map[s.sid]=(map[s.sid]||0)+s.earned;});
+  dd.forEach(function(d){map[d.sid]=(map[d.sid]||0)-d.amt;});
+  var top=Object.keys(map).sort(function(a,b){return map[b]-map[a];}).slice(0,5);
+  var h='';
+  top.forEach(function(id){var st=byId(id);if(!st)return;
+    h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--s1);border-radius:8px;margin-bottom:7px">'+
+      '<div style="width:32px;height:32px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-weight:700">'+st.name.charAt(0)+'</div>'+
+      '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+st.name+'</div><div style="font-size:11px;color:var(--t3)">'+st.role+'</div></div>'+
+      '<div style="font-weight:700;color:var(--grn)">'+t₸(map[id])+'</div></div>';
+  });
+  document.getElementById('dTop').innerHTML=h||'<div class="empty"><p>Нет данных</p></div>';
+  var today2=td();var tsh=sh.filter(function(s){return s.date===today2;});var th='';
+  tsh.forEach(function(s){var st=byId(s.sid);if(!st)return;
+    th+='<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--s1);border-radius:8px;margin-bottom:7px">'+
+      '<div style="width:8px;height:8px;border-radius:50%;background:'+(st.dept==='hall'?'#3b82f6':'#f59e0b')+';flex-shrink:0"></div>'+
+      '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+st.name+'</div><div style="font-size:11px;color:var(--t3)">'+st.role+'</div></div>'+
+      '<span class="badge '+(s.mult>=1?'bgrn':'byel')+'">×'+s.mult+'</span>'+
+      '<div style="font-weight:600;font-size:13px">'+t₸(s.earned)+'</div></div>';
+  });
+  document.getElementById('dToday').innerHTML=th||'<div class="empty" style="padding:20px"><p>Смены не заполнены</p></div>';
+}
+
+function rweek(){
+  var wn=D.week.num;
+  var sh=D.shifts.filter(function(s){return s.wn===wn;});
+  var dd=D.deds.filter(function(d){return d.wn===wn;});
+  var depts=dF==='all'?['hall','kitchen']:[dF];
+  var dnames={hall:'🍽️ Зал',kitchen:'👨‍🍳 Кухня'};
+  var html='';
+  depts.forEach(function(dept){
+    var stlist=D.staff.filter(function(s){return s.dept===dept&&s.act;});
+    if(!stlist.length)return;
+    html+='<div style="margin-bottom:28px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+
+      '<span style="width:10px;height:10px;border-radius:50%;background:'+(dept==='hall'?'#3b82f6':'#f59e0b')+';display:inline-block"></span>'+
+      '<b style="font-size:14px">'+dnames[dept]+'</b></div>'+
+      '<div class="tw"><table><thead><tr>'+
+      '<th>Сотрудник</th><th>Должность</th><th>Дата</th><th>Смена</th><th>Ставка</th><th>Начислено</th><th>Удержание</th><th>Итого</th><th>Заметка</th><th></th>'+
+      '</tr></thead><tbody>';
+    stlist.forEach(function(st){
+      var sth=sh.filter(function(s){return s.sid===st.id;});
+      var std=dd.filter(function(d){return d.sid===st.id;});
+      var earned=sth.reduce(function(a,s){return a+s.earned;},0);
+      var dedt=std.reduce(function(a,d){return a+d.amt;},0);
+      if(!sth.length&&!std.length){
+        html+='<tr><td><b>'+st.name+'</b></td><td><span class="badge br">'+st.role+'</span></td>'+
+          '<td colspan="7" style="color:var(--t3);font-size:12px">— нет данных —</td><td></td></tr>';return;
+      }
+      var rows=sth.length+std.length;var first=true;
+      sth.forEach(function(s){
+        html+='<tr>';
+        if(first){html+='<td rowspan="'+(rows+1)+'" style="font-weight:600">'+st.name+'</td>'+
+          '<td rowspan="'+(rows+1)+'"><span class="badge br">'+st.role+'</span></td>';first=false;}
+        html+='<td style="white-space:nowrap">'+fd(s.date)+'</td>'+
+          '<td><span class="badge '+(s.mult>=1?'bgrn':'byel')+'">×'+s.mult+'</span></td>'+
+          '<td>'+t₸(s.rate)+'</td>'+
+          '<td style="color:var(--grn);font-weight:600">'+t₸(s.earned)+'</td>'+
+          '<td>—</td><td></td>'+
+          '<td style="color:var(--t3);font-size:12px">'+(s.comment||'')+'</td>'+
+          '<td><div class="row">'+
+          '<button class="btn btn-s btn-sm btn-ic" onclick="openES(\''+s.id+'\')">✏️</button>'+
+          '<button class="btn btn-d btn-sm btn-ic" onclick="delS(\''+s.id+'\')">✕</button>'+
+          '</div></td></tr>';
+      });
+      std.forEach(function(d){
+        html+='<tr>';
+        if(first){html+='<td rowspan="'+(rows+1)+'" style="font-weight:600">'+st.name+'</td>'+
+          '<td rowspan="'+(rows+1)+'"><span class="badge br">'+st.role+'</span></td>';first=false;}
+        html+='<td style="white-space:nowrap">'+fdf(d.date)+'</td>'+
+          '<td>—</td><td>—</td><td>—</td>'+
+          '<td><span class="badge bred">−'+t₸(d.amt)+'</span></td>'+
+          '<td></td><td style="color:var(--t3);font-size:12px">'+(d.reason||'')+'</td>'+
+          '<td><button class="btn btn-d btn-sm btn-ic" onclick="delD(\''+d.id+'\')">✕</button></td></tr>';
+      });
+      html+='<tr style="background:rgba(255,255,255,.02)">'+
+        '<td colspan="3" style="font-size:11px;color:var(--t3)">ИТОГО '+st.name+'</td>'+
+        '<td style="color:var(--grn);font-weight:700">'+t₸(earned)+'</td>'+
+        '<td style="color:var(--red)">'+(dedt>0?'−'+t₸(dedt):'')+'</td>'+
+        '<td style="font-weight:700;font-family:\'Unbounded\',sans-serif">'+t₸(earned-dedt)+'</td>'+
+        '<td></td><td></td></tr>';
+    });
+    html+='</tbody></table></div></div>';
+  });
+  if(!html)html='<div class="empty"><div class="ei">📅</div><p>Добавьте сотрудников и рабочие дни</p></div>';
+  document.getElementById('weekBody').innerHTML=html;
+}
+function setDT(v,el){dF=v;document.querySelectorAll('#p-week .tab').forEach(function(t){t.classList.remove('on');});el.classList.add('on');rweek();}
+
+function rstaff(){
+  var wn=D.week.num;
+  var sh=D.shifts.filter(function(s){return s.wn===wn;});
+  var dd=D.deds.filter(function(d){return d.wn===wn;});
+  var list=sF==='all'?D.staff:D.staff.filter(function(s){return s.dept===sF;});
+  var h='';
+  list.forEach(function(st){
+    var earned=sh.filter(function(s){return s.sid===st.id;}).reduce(function(a,s){return a+s.earned;},0);
+    var dedt=dd.filter(function(d){return d.sid===st.id;}).reduce(function(a,d){return a+d.amt;},0);
+    h+='<tr><td><b>'+st.name+'</b></td>'+
+      '<td><span class="badge '+(st.dept==='hall'?'bh':'bk')+'">'+(st.dept==='hall'?'🍽️ Зал':'👨‍🍳 Кухня')+'</span></td>'+
+      '<td><span class="badge br">'+st.role+'</span></td>'+
+      '<td>'+t₸(st.rate)+'</td>'+
+      '<td style="font-weight:700;color:var(--grn)">'+t₸(earned-dedt)+'</td>'+
+      '<td style="color:'+(st.act?'var(--grn)':'var(--t3)')+'">'+(st.act?'✓ Активный':'✗ Неактивный')+'</td>'+
+      '<td><div class="row">'+
+      '<button class="btn btn-s btn-sm" onclick="openESt(\''+st.id+'\')">✏️</button>'+
+      '<button class="btn btn-d btn-sm" onclick="delSt(\''+st.id+'\')">✕</button>'+
+      '</div></td></tr>';
+  });
+  if(!h)h='<tr><td colspan="7"><div class="empty" style="padding:30px"><p>Нет сотрудников</p></div></td></tr>';
+  document.getElementById('staffBody').innerHTML=h;
+}
+function setST(v,el){sF=v;document.querySelectorAll('#p-staff .tab').forEach(function(t){t.classList.remove('on');});el.classList.add('on');rstaff();}
+
+function rded(){
+  var sorted=D.deds.slice().sort(function(a,b){return b.date>a.date?1:-1;});
+  var h='';
+  sorted.forEach(function(d){var st=byId(d.sid);
+    h+='<tr><td><b>'+(st?st.name:'—')+'</b></td><td>'+fdf(d.date)+'</td><td>'+d.reason+'</td>'+
+      '<td><span class="badge bred">−'+t₸(d.amt)+'</span></td>'+
+      '<td>Неделя №'+d.wn+'</td>'+
+      '<td><button class="btn btn-d btn-sm" onclick="delD(\''+d.id+'\')">✕</button></td></tr>';
+  });
+  if(!h)h='<tr><td colspan="6"><div class="empty" style="padding:30px"><p>Удержаний нет</p></div></td></tr>';
+  document.getElementById('dedBody').innerHTML=h;
+}
+
+function rhist(){
+  var h='';
+  D.history.slice().reverse().forEach(function(w){
+    h+='<div class="hcard" onclick="exportXL('+w.num+')">'+
+      '<div style="font-size:26px">📅</div>'+
+      '<div style="flex:1"><div style="font-weight:700;font-size:13px">Неделя №'+w.num+'</div>'+
+      '<div style="font-size:12px;color:var(--t3)">'+fdf(w.start)+' — '+fdf(w.end)+'</div>'+
+      '<div style="font-size:12px;color:var(--t3)">'+w.stc+' сотр. · '+w.shc+' смен</div></div>'+
+      '<div style="text-align:right"><div style="font-weight:700;font-size:18px;color:var(--grn)">'+t₸(w.net)+'</div>'+
+      '<div style="font-size:11px;color:var(--t3)">Нажмите для экспорта</div></div></div>';
+  });
+  if(!h)h='<div class="empty"><div class="ei">🗂️</div><p>История пуста</p></div>';
+  document.getElementById('histBody').innerHTML=h;
+}
+
+// STAFF CRUD
+function addStaff(){
+  var n=g('sN'),dept=g('sD'),r=g('sR'),w=parseFloat(g('sW'));
+  if(!n||!r||!w){notif('Заполните все поля','er');return;}
+  D.staff.push({id:uid(),name:n,dept:dept,role:r,rate:w,act:true});
+  save();closeModal('mStaff');rstaff();
+  ['sN','sR','sW'].forEach(function(id){document.getElementById(id).value='';});
+  notif('Сотрудник добавлен ✓');
+}
+function openESt(id){
+  var st=byId(id);if(!st)return;
+  document.getElementById('eSid').value=id;
+  document.getElementById('eSN').value=st.name;
+  document.getElementById('eSD').value=st.dept;
+  document.getElementById('eSR').value=st.role;
+  document.getElementById('eSW').value=st.rate;
+  document.getElementById('eSS').value=st.act?'1':'0';
+  showModal('mEditStaff');
+}
+function saveStaff(){
+  var id=g('eSid'),st=byId(id);if(!st)return;
+  st.name=g('eSN');st.dept=g('eSD');st.role=g('eSR');
+  st.rate=parseFloat(g('eSW'));st.act=g('eSS')==='1';
+  save();closeModal('mEditStaff');rstaff();notif('Обновлено ✓');
+}
+function delSt(id){
+  if(!confirm('Удалить сотрудника?'))return;
+  D.staff=D.staff.filter(function(s){return s.id!==id;});
+  save();rstaff();notif('Удалено');
+}
+
+// SHIFT CRUD
+function shAR(){
+  var sel=document.getElementById('shSt');
+  var opt=sel.options[sel.selectedIndex];
+  if(opt)document.getElementById('shR').value=opt.getAttribute('data-rate')||'';
+  shC();
+}
+function shC(){
+  var r=parseFloat(g('shR'))||0,m=parseFloat(g('shM'))||1;
+  document.getElementById('shPrev').textContent=t₸(r*m);
+}
+function addShift(){
+  var sid=g('shSt'),dt=g('shDt'),rate=parseFloat(g('shR')),mult=parseFloat(g('shM')),cm=g('shCm');
+  if(!sid||!dt||!rate||!mult){notif('Заполните все поля','er');return;}
+  D.shifts.push({id:uid(),sid:sid,date:dt,rate:rate,mult:mult,earned:rate*mult,comment:cm,wn:D.week.num});
+  save();closeModal('mShift');rweek();rdash();notif('Смена добавлена ✓');
+}
+function openES(id){
+  var s=D.shifts.find(function(x){return x.id===id;});if(!s)return;
+  document.getElementById('eShId').value=id;
+  document.getElementById('eShM').value=s.mult;
+  document.getElementById('eShR').value=s.rate;
+  document.getElementById('eShC').value=s.comment||'';
+  showModal('mEditShift');
+}
+function saveShift(){
+  var id=g('eShId'),s=D.shifts.find(function(x){return x.id===id;});if(!s)return;
+  s.mult=parseFloat(g('eShM'));s.rate=parseFloat(g('eShR'));s.earned=s.rate*s.mult;s.comment=g('eShC');
+  save();closeModal('mEditShift');rweek();rdash();notif('Обновлено ✓');
+}
+function delS(id){
+  if(!confirm('Удалить запись?'))return;
+  D.shifts=D.shifts.filter(function(s){return s.id!==id;});
+  save();rweek();rdash();notif('Удалено');
+}
+
+// DEDUCTION CRUD
+function addDed(){
+  var sid=g('dSt'),rs=g('dRs'),amt=parseFloat(g('dAm')),dt=g('dDt');
+  if(!sid||!rs||!amt){notif('Заполните все поля','er');return;}
+  D.deds.push({id:uid(),sid:sid,reason:rs,amt:amt,date:dt,wn:D.week.num});
+  save();closeModal('mDed');rded();rweek();rdash();notif('Удержание добавлено');
+}
+function addBulk(){
+  var rs=g('bRs'),amt=parseFloat(g('bAm')),dept=g('bDp'),dt=g('bDt');
+  if(!rs||!amt){notif('Заполните все поля','er');return;}
+  var targets=D.staff.filter(function(s){return s.act&&(dept==='all'||s.dept===dept);});
+  targets.forEach(function(st){D.deds.push({id:uid(),sid:st.id,reason:rs,amt:amt,date:dt,wn:D.week.num});});
+  save();closeModal('mBulk');rded();rdash();notif('Применено к '+targets.length+' сотр. ✓');
+}
+function delD(id){
+  if(!confirm('Удалить удержание?'))return;
+  D.deds=D.deds.filter(function(d){return d.id!==id;});
+  save();rded();rweek();rdash();notif('Удалено');
+}
+
+// NEW WEEK
+function newWeek(){
+  var ns=g('nwDt');if(!ns){notif('Выберите дату','er');return;}
+  var sh=D.shifts.filter(function(s){return s.wn===D.week.num;});
+  var dd=D.deds.filter(function(d){return d.wn===D.week.num;});
+  var earned=sh.reduce(function(a,s){return a+s.earned;},0);
+  var dedt=dd.reduce(function(a,d){return a+d.amt;},0);
+  D.history.push({num:D.week.num,start:D.week.start,end:wEnd(D.week.start),net:earned-dedt,
+    stc:D.staff.filter(function(s){return s.act;}).length,shc:sh.length});
+  D.week={start:ns,num:D.week.num+1};
+  save();closeModal('mNewWeek');winfo();rdash();notif('Неделя №'+D.week.num+' началась! ✓');
+}
+
+// EXCEL
+function exportXL(wn){
+  var sh=D.shifts.filter(function(s){return s.wn===wn;});
+  var dd=D.deds.filter(function(d){return d.wn===wn;});
+  var wb=XLSX.utils.book_new();
+  ['hall','kitchen'].forEach(function(dept){
+    var dname=dept==='hall'?'Зал':'Кухня';
+    var rows=[['ФИО','Должность','Дата','Смена','Ставка/день','Начислено','Удержание','Причина','Итого','Комментарий']];
+    D.staff.filter(function(s){return s.dept===dept;}).forEach(function(st){
+      var sth=sh.filter(function(s){return s.sid===st.id;});
+      var std=dd.filter(function(d){return d.sid===st.id;});
+      var earned=sth.reduce(function(a,s){return a+s.earned;},0);
+      var dedt=std.reduce(function(a,d){return a+d.amt;},0);
+      sth.forEach(function(s){rows.push([st.name,st.role,s.date,'×'+s.mult,s.rate,s.earned,'','','',s.comment||'']);});
+      std.forEach(function(d){rows.push([st.name,st.role,d.date,'','','',d.amt,d.reason,'','']);});
+      rows.push(['ИТОГО: '+st.name,'','','','',earned,dedt,'',earned-dedt,'']);
+      rows.push([]);
+    });
+    var ws=XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols']=[{wch:20},{wch:15},{wch:14},{wch:10},{wch:14},{wch:14},{wch:14},{wch:20},{wch:14},{wch:20}];
+    XLSX.utils.book_append_sheet(wb,ws,dname);
+  });
+  var sum=[['Сотрудник','Отдел','Должность','Начислено','Удержано','К выплате','Подпись']];
+  D.staff.forEach(function(st){
+    var earned=sh.filter(function(s){return s.sid===st.id;}).reduce(function(a,s){return a+s.earned;},0);
+    var dedt=dd.filter(function(d){return d.sid===st.id;}).reduce(function(a,d){return a+d.amt;},0);
+    if(earned||dedt)sum.push([st.name,st.dept==='hall'?'Зал':'Кухня',st.role,earned,dedt,earned-dedt,'']);
+  });
+  var wsS=XLSX.utils.aoa_to_sheet(sum);
+  wsS['!cols']=[{wch:20},{wch:10},{wch:15},{wch:14},{wch:14},{wch:14},{wch:20}];
+  XLSX.utils.book_append_sheet(wb,wsS,'Сводка');
+  XLSX.writeFile(wb,'Зарплата_Неделя'+wn+'_'+D.cfg.name+'.xlsx');
+  notif('Excel скачан ✓');
+}
+
+// PRINT
+function openPrint(){
+  var sel=document.getElementById('prSt');
+  sel.innerHTML='<option value="all">Все сотрудники</option>'+
+    D.staff.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>';}).join('');
+  rPrint();showModal('mPrint');
+}
+function rPrint(){
+  var filt=g('prSt');
+  var wn=D.week.num;
+  var sh=D.shifts.filter(function(s){return s.wn===wn;});
+  var dd=D.deds.filter(function(d){return d.wn===wn;});
+  var targets=filt==='all'?D.staff:D.staff.filter(function(s){return s.id===filt;});
+  var h='<div style="text-align:center;margin-bottom:18px;border-bottom:2px solid #333;padding-bottom:12px">'+
+    '<h2 style="font-size:18px;margin:0">'+D.cfg.name+'</h2>'+
+    '<p style="font-size:12px;color:#666;margin:4px 0">Расчётный лист · Неделя №'+wn+'</p>'+
+    '<p style="font-size:12px;color:#666">'+fds(D.week.start)+' – '+fds(wEnd(D.week.start))+'</p></div>';
+  targets.forEach(function(st){
+    var sth=sh.filter(function(s){return s.sid===st.id;});
+    var std=dd.filter(function(d){return d.sid===st.id;});
+    if(!sth.length&&!std.length)return;
+    var earned=sth.reduce(function(a,s){return a+s.earned;},0);
+    var dedt=std.reduce(function(a,d){return a+d.amt;},0);
+    h+='<div style="page-break-inside:avoid;margin-bottom:22px;border:1px solid #ddd;border-radius:8px;padding:14px">'+
+      '<div style="font-weight:bold;font-size:14px;margin-bottom:8px">'+st.name+' · '+st.role+' · '+(st.dept==='hall'?'Зал':'Кухня')+'</div>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px"><thead><tr>'+
+      '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Дата</th>'+
+      '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Смена</th>'+
+      '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Ставка</th>'+
+      '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Начислено</th>'+
+      '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Удержание</th>'+
+      '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Причина</th></tr></thead><tbody>';
+    sth.forEach(function(s){h+='<tr><td style="border:1px solid #ddd;padding:5px 8px">'+fdf(s.date)+'</td><td style="border:1px solid #ddd;padding:5px 8px">×'+s.mult+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+t₸(s.rate)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+t₸(s.earned)+'</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">'+(s.comment||'—')+'</td></tr>';});
+    std.forEach(function(d){h+='<tr><td style="border:1px solid #ddd;padding:5px 8px">'+fdf(d.date)+'</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">−'+t₸(d.amt)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+d.reason+'</td></tr>';});
+    h+='<tr style="font-weight:bold;background:#f9f9f9"><td colspan="3" style="border:1px solid #ddd;padding:5px 8px">ИТОГО</td>'+
+      '<td style="border:1px solid #ddd;padding:5px 8px">'+t₸(earned)+'</td>'+
+      '<td style="border:1px solid #ddd;padding:5px 8px">'+(dedt?'−'+t₸(dedt):'')+'</td>'+
+      '<td style="border:1px solid #ddd;padding:5px 8px;font-size:13px">К ВЫПЛАТЕ: '+t₸(earned-dedt)+'</td></tr>'+
+    '</tbody></table>'+
+    '<div style="display:flex;align-items:center;gap:16px;font-size:12px;margin-top:8px">'+
+    '<span>Получил(а):</span><div style="flex:1;border-bottom:1px solid #333;height:20px"></div><span>Подпись / Дата</span></div></div>';
+  });
+  document.getElementById('prBody').innerHTML=h;
+  document.getElementById('printZone').innerHTML=h;
+}
+function doPrint(){rPrint();window.print();}
+
+// MODAL
+function showModal(id){
+  if(id==='mShift'){
+    var sel=document.getElementById('shSt');
+    sel.innerHTML=D.staff.filter(function(s){return s.act;}).map(function(s){
+      return '<option value="'+s.id+'" data-rate="'+s.rate+'">'+s.name+' ('+(s.dept==='hall'?'Зал':'Кухня')+')</option>';
+    }).join('');
+    document.getElementById('shDt').value=td();
+    shAR();
+  }
+  if(id==='mDed'){
+    document.getElementById('dSt').innerHTML=D.staff.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>';}).join('');
+    document.getElementById('dDt').value=td();
+  }
+  if(id==='mBulk') document.getElementById('bDt').value=td();
+  if(id==='mNewWeek'){
+    var d=new Date();d.setDate(d.getDate()+7);
+    document.getElementById('nwDt').value=d.toISOString().split('T')[0];
+  }
+  document.getElementById(id).classList.add('on');
+}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+document.querySelectorAll('.ov').forEach(function(o){
+  o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('on');});
+});
+
+function notif(msg,type){
+  var n=document.createElement('div');
+  n.className='notif '+(type||'ok');
+  n.textContent=(type==='er'?'⚠ ':'✓ ')+msg;
+  document.body.appendChild(n);
+  setTimeout(function(){n.style.opacity='0';n.style.transition='opacity .4s';},2500);
+  setTimeout(function(){if(n.parentNode)n.parentNode.removeChild(n);},3000);
+}
+
+// INIT
+load();
+winfo();
+if(!D.staff.length){
+  D.staff=[
+    {id:'s1',name:'Аружан Бекова',dept:'hall',role:'Администратор',rate:25000,act:true},
+    {id:'s2',name:'Динара Сатова',dept:'hall',role:'Официант',rate:18000,act:true},
+    {id:'s3',name:'Марат Жаксыбеков',dept:'kitchen',role:'Повар',rate:30000,act:true},
+    {id:'s4',name:'Айгерим Нурова',dept:'kitchen',role:'Помощник повара',rate:20000,act:true},
+  ];
+  var t2=td();
+  D.shifts=[
+    {id:'sh1',sid:'s1',date:t2,rate:25000,mult:0.5,earned:12500,comment:'',wn:D.week.num},
+    {id:'sh2',sid:'s2',date:t2,rate:18000,mult:1,earned:18000,comment:'',wn:D.week.num},
+    {id:'sh3',sid:'s3',date:t2,rate:30000,mult:1,earned:30000,comment:'',wn:D.week.num},
+  ];
+  save();
+}
+rdash();
+</script>
+</body>
+</html>
