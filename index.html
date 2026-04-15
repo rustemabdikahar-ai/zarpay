@@ -338,7 +338,7 @@ var dF='all',sF='all';
 
 function td(){return new Date().toISOString().split('T')[0];}
 function uid(){return '_'+Math.random().toString(36).slice(2)+Date.now().toString(36);}
-function t₸(n){return Math.round(n||0).toLocaleString('ru-RU')+' ₸';}
+function tenge(n){return Math.round(n||0).toLocaleString('ru-RU')+' ₸';}
 function fd(s){return s?new Date(s+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):''}
 function fdf(s){return s?new Date(s+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}):''}
 function fds(s){return s?new Date(s+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short'}):''}
@@ -383,10 +383,10 @@ function rdash(){
   var dedt=dd.reduce(function(a,d){return a+d.amt;},0);
   var hE=0,kE=0;
   sh.forEach(function(s){var st=byId(s.sid);if(st){if(st.dept==='hall')hE+=s.earned;else kE+=s.earned;}});
-  document.getElementById('dTotal').textContent=t₸(earned-dedt);
+  document.getElementById('dTotal').textContent=tenge(earned-dedt);
   document.getElementById('dStaff').textContent=D.staff.filter(function(s){return s.act;}).length;
-  document.getElementById('dHall').textContent=t₸(hE);
-  document.getElementById('dKit').textContent=t₸(kE);
+  document.getElementById('dHall').textContent=tenge(hE);
+  document.getElementById('dKit').textContent=tenge(kE);
   var map={};
   sh.forEach(function(s){map[s.sid]=(map[s.sid]||0)+s.earned;});
   dd.forEach(function(d){map[d.sid]=(map[d.sid]||0)-d.amt;});
@@ -396,7 +396,7 @@ function rdash(){
     h+='<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--s1);border-radius:8px;margin-bottom:7px">'+
       '<div style="width:32px;height:32px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-weight:700">'+st.name.charAt(0)+'</div>'+
       '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+st.name+'</div><div style="font-size:11px;color:var(--t3)">'+st.role+'</div></div>'+
-      '<div style="font-weight:700;color:var(--grn)">'+t₸(map[id])+'</div></div>';
+      '<div style="font-weight:700;color:var(--grn)">'+tenge(map[id])+'</div></div>';
   });
   document.getElementById('dTop').innerHTML=h||'<div class="empty"><p>Нет данных</p></div>';
   var today2=td();var tsh=sh.filter(function(s){return s.date===today2;});var th='';
@@ -405,7 +405,7 @@ function rdash(){
       '<div style="width:8px;height:8px;border-radius:50%;background:'+(st.dept==='hall'?'#3b82f6':'#f59e0b')+';flex-shrink:0"></div>'+
       '<div style="flex:1"><div style="font-size:13px;font-weight:600">'+st.name+'</div><div style="font-size:11px;color:var(--t3)">'+st.role+'</div></div>'+
       '<span class="badge '+(s.mult>=1?'bgrn':'byel')+'">×'+s.mult+'</span>'+
-      '<div style="font-weight:600;font-size:13px">'+t₸(s.earned)+'</div></div>';
+      '<div style="font-weight:600;font-size:13px">'+tenge(s.earned)+'</div></div>';
   });
   document.getElementById('dToday').innerHTML=th||'<div class="empty" style="padding:20px"><p>Смены не заполнены</p></div>';
 }
@@ -442,8 +442,8 @@ function rweek(){
           '<td rowspan="'+(rows+1)+'"><span class="badge br">'+st.role+'</span></td>';first=false;}
         html+='<td style="white-space:nowrap">'+fd(s.date)+'</td>'+
           '<td><span class="badge '+(s.mult>=1?'bgrn':'byel')+'">×'+s.mult+'</span></td>'+
-          '<td>'+t₸(s.rate)+'</td>'+
-          '<td style="color:var(--grn);font-weight:600">'+t₸(s.earned)+'</td>'+
+          '<td>'+tenge(s.rate)+'</td>'+
+          '<td style="color:var(--grn);font-weight:600">'+tenge(s.earned)+'</td>'+
           '<td>—</td><td></td>'+
           '<td style="color:var(--t3);font-size:12px">'+(s.comment||'')+'</td>'+
           '<td><div class="row">'+
@@ -457,15 +457,15 @@ function rweek(){
           '<td rowspan="'+(rows+1)+'"><span class="badge br">'+st.role+'</span></td>';first=false;}
         html+='<td style="white-space:nowrap">'+fdf(d.date)+'</td>'+
           '<td>—</td><td>—</td><td>—</td>'+
-          '<td><span class="badge bred">−'+t₸(d.amt)+'</span></td>'+
+          '<td><span class="badge bred">−'+tenge(d.amt)+'</span></td>'+
           '<td></td><td style="color:var(--t3);font-size:12px">'+(d.reason||'')+'</td>'+
           '<td><button class="btn btn-d btn-sm btn-ic" onclick="delD(\''+d.id+'\')">✕</button></td></tr>';
       });
       html+='<tr style="background:rgba(255,255,255,.02)">'+
         '<td colspan="3" style="font-size:11px;color:var(--t3)">ИТОГО '+st.name+'</td>'+
-        '<td style="color:var(--grn);font-weight:700">'+t₸(earned)+'</td>'+
-        '<td style="color:var(--red)">'+(dedt>0?'−'+t₸(dedt):'')+'</td>'+
-        '<td style="font-weight:700;font-family:\'Unbounded\',sans-serif">'+t₸(earned-dedt)+'</td>'+
+        '<td style="color:var(--grn);font-weight:700">'+tenge(earned)+'</td>'+
+        '<td style="color:var(--red)">'+(dedt>0?'−'+tenge(dedt):'')+'</td>'+
+        '<td style="font-weight:700;font-family:\'Unbounded\',sans-serif">'+tenge(earned-dedt)+'</td>'+
         '<td></td><td></td></tr>';
     });
     html+='</tbody></table></div></div>';
@@ -487,8 +487,8 @@ function rstaff(){
     h+='<tr><td><b>'+st.name+'</b></td>'+
       '<td><span class="badge '+(st.dept==='hall'?'bh':'bk')+'">'+(st.dept==='hall'?'🍽️ Зал':'👨‍🍳 Кухня')+'</span></td>'+
       '<td><span class="badge br">'+st.role+'</span></td>'+
-      '<td>'+t₸(st.rate)+'</td>'+
-      '<td style="font-weight:700;color:var(--grn)">'+t₸(earned-dedt)+'</td>'+
+      '<td>'+tenge(st.rate)+'</td>'+
+      '<td style="font-weight:700;color:var(--grn)">'+tenge(earned-dedt)+'</td>'+
       '<td style="color:'+(st.act?'var(--grn)':'var(--t3)')+'">'+(st.act?'✓ Активный':'✗ Неактивный')+'</td>'+
       '<td><div class="row">'+
       '<button class="btn btn-s btn-sm" onclick="openESt(\''+st.id+'\')">✏️</button>'+
@@ -505,7 +505,7 @@ function rded(){
   var h='';
   sorted.forEach(function(d){var st=byId(d.sid);
     h+='<tr><td><b>'+(st?st.name:'—')+'</b></td><td>'+fdf(d.date)+'</td><td>'+d.reason+'</td>'+
-      '<td><span class="badge bred">−'+t₸(d.amt)+'</span></td>'+
+      '<td><span class="badge bred">−'+tenge(d.amt)+'</span></td>'+
       '<td>Неделя №'+d.wn+'</td>'+
       '<td><button class="btn btn-d btn-sm" onclick="delD(\''+d.id+'\')">✕</button></td></tr>';
   });
@@ -521,7 +521,7 @@ function rhist(){
       '<div style="flex:1"><div style="font-weight:700;font-size:13px">Неделя №'+w.num+'</div>'+
       '<div style="font-size:12px;color:var(--t3)">'+fdf(w.start)+' — '+fdf(w.end)+'</div>'+
       '<div style="font-size:12px;color:var(--t3)">'+w.stc+' сотр. · '+w.shc+' смен</div></div>'+
-      '<div style="text-align:right"><div style="font-weight:700;font-size:18px;color:var(--grn)">'+t₸(w.net)+'</div>'+
+      '<div style="text-align:right"><div style="font-weight:700;font-size:18px;color:var(--grn)">'+tenge(w.net)+'</div>'+
       '<div style="font-size:11px;color:var(--t3)">Нажмите для экспорта</div></div></div>';
   });
   if(!h)h='<div class="empty"><div class="ei">🗂️</div><p>История пуста</p></div>';
@@ -568,7 +568,7 @@ function shAR(){
 }
 function shC(){
   var r=parseFloat(g('shR'))||0,m=parseFloat(g('shM'))||1;
-  document.getElementById('shPrev').textContent=t₸(r*m);
+  document.getElementById('shPrev').textContent=tenge(r*m);
 }
 function addShift(){
   var sid=g('shSt'),dt=g('shDt'),rate=parseFloat(g('shR')),mult=parseFloat(g('shM')),cm=g('shCm');
@@ -695,12 +695,12 @@ function rPrint(){
       '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Начислено</th>'+
       '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Удержание</th>'+
       '<th style="border:1px solid #ccc;padding:5px 8px;background:#f5f5f5">Причина</th></tr></thead><tbody>';
-    sth.forEach(function(s){h+='<tr><td style="border:1px solid #ddd;padding:5px 8px">'+fdf(s.date)+'</td><td style="border:1px solid #ddd;padding:5px 8px">×'+s.mult+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+t₸(s.rate)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+t₸(s.earned)+'</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">'+(s.comment||'—')+'</td></tr>';});
-    std.forEach(function(d){h+='<tr><td style="border:1px solid #ddd;padding:5px 8px">'+fdf(d.date)+'</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">−'+t₸(d.amt)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+d.reason+'</td></tr>';});
+    sth.forEach(function(s){h+='<tr><td style="border:1px solid #ddd;padding:5px 8px">'+fdf(s.date)+'</td><td style="border:1px solid #ddd;padding:5px 8px">×'+s.mult+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+tenge(s.rate)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+tenge(s.earned)+'</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">'+(s.comment||'—')+'</td></tr>';});
+    std.forEach(function(d){h+='<tr><td style="border:1px solid #ddd;padding:5px 8px">'+fdf(d.date)+'</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">—</td><td style="border:1px solid #ddd;padding:5px 8px">−'+tenge(d.amt)+'</td><td style="border:1px solid #ddd;padding:5px 8px">'+d.reason+'</td></tr>';});
     h+='<tr style="font-weight:bold;background:#f9f9f9"><td colspan="3" style="border:1px solid #ddd;padding:5px 8px">ИТОГО</td>'+
-      '<td style="border:1px solid #ddd;padding:5px 8px">'+t₸(earned)+'</td>'+
-      '<td style="border:1px solid #ddd;padding:5px 8px">'+(dedt?'−'+t₸(dedt):'')+'</td>'+
-      '<td style="border:1px solid #ddd;padding:5px 8px;font-size:13px">К ВЫПЛАТЕ: '+t₸(earned-dedt)+'</td></tr>'+
+      '<td style="border:1px solid #ddd;padding:5px 8px">'+tenge(earned)+'</td>'+
+      '<td style="border:1px solid #ddd;padding:5px 8px">'+(dedt?'−'+tenge(dedt):'')+'</td>'+
+      '<td style="border:1px solid #ddd;padding:5px 8px;font-size:13px">К ВЫПЛАТЕ: '+tenge(earned-dedt)+'</td></tr>'+
     '</tbody></table>'+
     '<div style="display:flex;align-items:center;gap:16px;font-size:12px;margin-top:8px">'+
     '<span>Получил(а):</span><div style="flex:1;border-bottom:1px solid #333;height:20px"></div><span>Подпись / Дата</span></div></div>';
