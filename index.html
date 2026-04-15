@@ -15,6 +15,22 @@
   --t1:#f1f5f9;--t2:#94a3b8;--t3:#64748b;
   --r:12px;--r2:8px;
 }
+
+/* PIN SCREEN */
+#pinScreen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:24px}
+#pinScreen.hidden{display:none}
+.pin-logo{font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.pin-client{font-size:13px;color:var(--t3);margin-top:-16px;letter-spacing:.5px}
+.pin-dots{display:flex;gap:14px}
+.pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid var(--b2);background:transparent;transition:all .2s}
+.pin-dot.on{background:var(--acc);border-color:var(--acc);box-shadow:0 0 10px rgba(59,130,246,.5)}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:220px}
+.pin-btn{aspect-ratio:1;border:1px solid var(--b2);background:var(--s1);color:var(--t1);font-family:'Manrope',sans-serif;font-size:18px;font-weight:600;border-radius:var(--r2);cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.pin-btn:hover{background:var(--s2);border-color:var(--acc)}
+.pin-btn:active{transform:scale(.93);background:var(--s2)}
+.pin-err{color:var(--red);font-size:12px;min-height:18px;text-align:center}
+.pin-hint{color:var(--t3);font-size:11px;text-align:center;line-height:1.7}
+
 body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden}
 .layout{display:flex;min-height:100vh}
 .sidebar{width:240px;background:var(--s1);border-right:1px solid var(--b1);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:100;overflow-y:auto}
@@ -98,6 +114,34 @@ tr:hover td{background:rgba(255,255,255,.015)}
 </style>
 </head>
 <body>
+<!-- PIN SCREEN -->
+<div id="pinScreen">
+  <div class="pin-logo">ZarPay</div>
+  <div class="pin-client" id="pinClientName"></div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-grid">
+    <div class="pin-btn" onclick="pp('1')">1</div>
+    <div class="pin-btn" onclick="pp('2')">2</div>
+    <div class="pin-btn" onclick="pp('3')">3</div>
+    <div class="pin-btn" onclick="pp('4')">4</div>
+    <div class="pin-btn" onclick="pp('5')">5</div>
+    <div class="pin-btn" onclick="pp('6')">6</div>
+    <div class="pin-btn" onclick="pp('7')">7</div>
+    <div class="pin-btn" onclick="pp('8')">8</div>
+    <div class="pin-btn" onclick="pp('9')">9</div>
+    <div class="pin-btn" onclick="pp('del')" style="font-size:16px">⌫</div>
+    <div class="pin-btn" onclick="pp('0')">0</div>
+    <div class="pin-btn" onclick="pp('ok')" style="background:var(--acc);border-color:var(--acc)">OK</div>
+  </div>
+  <div class="pin-err" id="pinErr"></div>
+  <div class="pin-hint">По умолчанию: <b>1234</b><br>Сменить в Настройках</div>
+</div>
+
 <div class="layout">
 
 <nav class="sidebar" id="sidebar">
@@ -213,9 +257,23 @@ tr:hover td{background:rgba(255,255,255,.015)}
       </div>
     </div>
     <div class="sc2">
+      <b style="font-size:14px">🔐 Изменить PIN-код</b>
+      <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">4-значный код для входа</p>
+      <div class="row">
+        <input class="fi" id="newPin" maxlength="4" style="max-width:140px" placeholder="Новый PIN">
+        <button class="btn btn-p" onclick="changePin()">Изменить</button>
+      </div>
+    </div>
+    <div class="sc2">
+      <b style="font-size:14px">🔗 ID заведения</b>
+      <p style="font-size:12px;color:var(--t3);margin:6px 0 8px">Передай эту ссылку сотруднику — только для этого заведения</p>
+      <div id="clientLink" style="background:var(--s2);border-radius:var(--r2);padding:10px 14px;font-size:12px;color:var(--acc);word-break:break-all;cursor:pointer" onclick="copyLink()"></div>
+      <p style="font-size:11px;color:var(--t3);margin-top:6px">Нажмите чтобы скопировать</p>
+    </div>
+    <div class="sc2">
       <b style="font-size:14px">🗑️ Удалить все данные</b>
       <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">Необратимое действие</p>
-      <button class="btn btn-d" onclick="if(confirm('Удалить ВСЁ?')){localStorage.removeItem('zp2');location.reload()}">Удалить все данные</button>
+      <button class="btn btn-d" onclick="if(confirm('Удалить ВСЁ?')){localStorage.removeItem(STORE_KEY);location.reload()}">Удалить все данные</button>
     </div>
   </div>
 </div>
@@ -366,7 +424,13 @@ function go(p){
   if(p==='staff')rstaff();
   if(p==='ded')rded();
   if(p==='hist')rhist();
-  if(p==='set')document.getElementById('setName').value=D.cfg.name||'';
+  if(p==='set'){
+    document.getElementById('setName').value=D.cfg.name||'';
+    var base=window.location.origin+window.location.pathname;
+    var link=base+'?id='+CLIENT_ID;
+    var el=document.getElementById('clientLink');
+    if(el) el.textContent=link;
+  }
 }
 
 function winfo(){
@@ -736,6 +800,20 @@ document.querySelectorAll('.ov').forEach(function(o){
   o.addEventListener('click',function(e){if(e.target===o)o.classList.remove('on');});
 });
 
+function changePin(){
+  var val = document.getElementById('newPin').value.trim();
+  if(!/^[0-9]{4}$/.test(val)){ notif('PIN должен быть 4 цифры','er'); return; }
+  D.cfg.pin = val;
+  save();
+  document.getElementById('newPin').value='';
+  notif('PIN изменён ✓');
+}
+function copyLink(){
+  var base=window.location.origin+window.location.pathname;
+  var link=base+'?id='+CLIENT_ID;
+  if(navigator.clipboard){ navigator.clipboard.writeText(link).then(function(){ notif('Ссылка скопирована ✓'); }); }
+  else { var ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); notif('Ссылка скопирована ✓'); }
+}
 function notif(msg,type){
   var n=document.createElement('div');
   n.className='notif '+(type||'ok');
@@ -745,10 +823,71 @@ function notif(msg,type){
   setTimeout(function(){if(n.parentNode)n.parentNode.removeChild(n);},3000);
 }
 
-// INIT
-load();
-winfo();
-if(!D.staff.length){
+// ==================== CLIENT ID (мультиклиент) ====================
+var CLIENT_ID = (function(){
+  var params = new URLSearchParams(window.location.search);
+  var id = params.get('id') || params.get('client') || 'default';
+  // sanitize: only alphanumeric and dash
+  return id.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,30) || 'default';
+})();
+var STORE_KEY = 'zp2_' + CLIENT_ID;
+
+// Override save/load to use client-specific key
+function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(D));}catch(e){}}
+function load(){
+  try{var r=localStorage.getItem(STORE_KEY);if(r)D=JSON.parse(r);}catch(e){}
+  if(!D.week)D.week={start:td(),num:1};
+  if(!D.cfg)D.cfg={name:'Мой ресторан',pin:'1234'};
+  if(!D.cfg.pin)D.cfg.pin='1234';
+  if(!D.history)D.history=[];
+}
+
+// ==================== PIN LOGIC ====================
+var _pin = '';
+function pp(v){
+  var err = document.getElementById('pinErr');
+  err.textContent = '';
+  if(v === 'del'){ _pin = _pin.slice(0,-1); updDots(); return; }
+  if(v === 'ok'){
+    if(_pin.length < 4){ err.textContent = 'Введите 4 цифры'; return; }
+    checkPin(); return;
+  }
+  if(_pin.length >= 4) return;
+  _pin += v;
+  updDots();
+  if(_pin.length === 4) setTimeout(checkPin, 120);
+}
+function updDots(){
+  for(var i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on', i < _pin.length);
+}
+function checkPin(){
+  var stored = localStorage.getItem(STORE_KEY);
+  var pin = '1234';
+  if(stored){ try{ var p=JSON.parse(stored); pin = (p.cfg && p.cfg.pin) || '1234'; }catch(e){} }
+  if(_pin === pin){
+    document.getElementById('pinScreen').classList.add('hidden');
+    load(); winfo(); initApp();
+  } else {
+    document.getElementById('pinErr').textContent = 'Неверный PIN';
+    _pin = ''; updDots();
+    setTimeout(function(){ document.getElementById('pinErr').textContent=''; }, 1800);
+  }
+}
+document.addEventListener('keydown', function(e){
+  if(document.getElementById('pinScreen').classList.contains('hidden')) return;
+  if(e.key>='0'&&e.key<='9') pp(e.key);
+  else if(e.key==='Backspace') pp('del');
+  else if(e.key==='Enter') pp('ok');
+});
+
+// Show client name on pin screen
+(function(){
+  var cn = document.getElementById('pinClientName');
+  if(cn && CLIENT_ID !== 'default') cn.textContent = CLIENT_ID.toUpperCase();
+})();
+
+function initApp(){
+  if(!D.staff.length){
   D.staff=[
     {id:'s1',name:'Аружан Бекова',dept:'hall',role:'Администратор',rate:25000,act:true},
     {id:'s2',name:'Динара Сатова',dept:'hall',role:'Официант',rate:18000,act:true},
@@ -762,8 +901,9 @@ if(!D.staff.length){
     {id:'sh3',sid:'s3',date:t2,rate:30000,mult:1,earned:30000,comment:'',wn:D.week.num},
   ];
   save();
+  }
+  rdash();
 }
-rdash();
 </script>
 </body>
 </html>
