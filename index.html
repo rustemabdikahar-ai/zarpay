@@ -824,6 +824,12 @@ function notif(msg,type){
 }
 
 // ==================== CLIENT ID (мультиклиент) ====================
+// Clear legacy non-client data key on first load
+(function(){
+  var old = localStorage.getItem('zp2');
+  if(old){ localStorage.removeItem('zp2'); }
+})();
+
 var CLIENT_ID = (function(){
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id') || params.get('client') || 'default';
@@ -887,21 +893,6 @@ document.addEventListener('keydown', function(e){
 })();
 
 function initApp(){
-  if(!D.staff.length){
-  D.staff=[
-    {id:'s1',name:'Аружан Бекова',dept:'hall',role:'Администратор',rate:25000,act:true},
-    {id:'s2',name:'Динара Сатова',dept:'hall',role:'Официант',rate:18000,act:true},
-    {id:'s3',name:'Марат Жаксыбеков',dept:'kitchen',role:'Повар',rate:30000,act:true},
-    {id:'s4',name:'Айгерим Нурова',dept:'kitchen',role:'Помощник повара',rate:20000,act:true},
-  ];
-  var t2=td();
-  D.shifts=[
-    {id:'sh1',sid:'s1',date:t2,rate:25000,mult:0.5,earned:12500,comment:'',wn:D.week.num},
-    {id:'sh2',sid:'s2',date:t2,rate:18000,mult:1,earned:18000,comment:'',wn:D.week.num},
-    {id:'sh3',sid:'s3',date:t2,rate:30000,mult:1,earned:30000,comment:'',wn:D.week.num},
-  ];
-  save();
-  }
   rdash();
 }
 </script>
