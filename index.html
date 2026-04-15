@@ -418,18 +418,18 @@
     <div class="pin-dot" id="d3"></div>
   </div>
   <div class="pin-grid">
-    <button class="pin-btn" data-pin="1">1</button>
-    <button class="pin-btn" data-pin="2">2</button>
-    <button class="pin-btn" data-pin="3">3</button>
-    <button class="pin-btn" data-pin="4">4</button>
-    <button class="pin-btn" data-pin="5">5</button>
-    <button class="pin-btn" data-pin="6">6</button>
-    <button class="pin-btn" data-pin="7">7</button>
-    <button class="pin-btn" data-pin="8">8</button>
-    <button class="pin-btn" data-pin="9">9</button>
-    <button class="pin-btn" data-pin="del" style="color:var(--text3)">⌫</button>
-    <button class="pin-btn" data-pin="0">0</button>
-    <button class="pin-btn" data-pin="ok" style="background:var(--accent);color:white">OK</button>
+    <button class="pin-btn" onclick="pp('1')">1</button>
+    <button class="pin-btn" onclick="pp('2')">2</button>
+    <button class="pin-btn" onclick="pp('3')">3</button>
+    <button class="pin-btn" onclick="pp('4')">4</button>
+    <button class="pin-btn" onclick="pp('5')">5</button>
+    <button class="pin-btn" onclick="pp('6')">6</button>
+    <button class="pin-btn" onclick="pp('7')">7</button>
+    <button class="pin-btn" onclick="pp('8')">8</button>
+    <button class="pin-btn" onclick="pp('9')">9</button>
+    <button class="pin-btn" onclick="pp('d')" style="color:var(--text3)">⌫</button>
+    <button class="pin-btn" onclick="pp('0')">0</button>
+    <button class="pin-btn" onclick="pp('ok')" style="background:var(--accent);color:white">OK</button>
   </div>
   <div class="pin-error" id="pinError"></div>
   <div class="lock-hint">По умолчанию: 1234<br>Сменить в Настройках</div>
@@ -887,59 +887,41 @@ function load() {
 }
 
 // ==================== PIN ====================
-load(); // Load data FIRST before any listeners
-function pinPress(v) {
-  const err = document.getElementById('pinError');
+// Ultra-simple global pin function called directly via onclick
+window.pp = function(v) {
+  var dots = [document.getElementById('d0'),document.getElementById('d1'),document.getElementById('d2'),document.getElementById('d3')];
+  var err = document.getElementById('pinError');
+  if (!err) return;
   err.textContent = '';
-  if (v === 'del') {
+  if (v === 'd') {
     pinInput = pinInput.slice(0, -1);
-    updateDots();
-    return;
-  }
-  if (v === 'ok') {
-    if (pinInput.length < 4) { err.textContent = 'Введите 4 цифры'; return; }
-    checkPin();
-    return;
-  }
-  if (pinInput.length >= 4) return;
-  pinInput += v;
-  updateDots();
-  if (pinInput.length === 4) setTimeout(checkPin, 120);
-}
-
-function updateDots() {
-  for (let i = 0; i < 4; i++) {
-    document.getElementById('d' + i).classList.toggle('filled', i < pinInput.length);
-  }
-}
-
-function checkPin() {
-  if (pinInput === db.settings.pin) {
-    document.getElementById('lockScreen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    refreshAll();
+  } else if (v === 'ok') {
+    var stored = localStorage.getItem('zarpay_db');
+    var pin = '1234';
+    if (stored) { try { pin = JSON.parse(stored).settings.pin || '1234'; } catch(e){} }
+    if (pinInput === pin) {
+      document.getElementById('lockScreen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      load();
+      refreshAll();
+    } else {
+      err.textContent = 'Неверный PIN — попробуй 1234';
+      pinInput = '';
+    }
   } else {
-    document.getElementById('pinError').textContent = 'Неверный PIN';
-    pinInput = '';
-    updateDots();
-    setTimeout(() => { document.getElementById('pinError').textContent = ''; }, 1800);
+    if (pinInput.length >= 4) return;
+    pinInput += v;
+    if (pinInput.length === 4) {
+      setTimeout(function(){ window.pp('ok'); }, 150);
+    }
   }
-}
-
-// Pin button event listeners
-document.querySelectorAll('.pin-btn').forEach(function(btn) {
-  btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    pinPress(btn.getAttribute('data-pin'));
-  });
-});
-// Keyboard support
+  for (var i=0;i<4;i++) dots[i].classList.toggle('filled', i < pinInput.length);
+};
 document.addEventListener('keydown', function(e) {
   if (document.getElementById('lockScreen').style.display === 'none') return;
-  if (e.key >= '0' && e.key <= '9') pinPress(e.key);
-  else if (e.key === 'Backspace') pinPress('del');
-  else if (e.key === 'Enter') pinPress('ok');
+  if (e.key >= '0' && e.key <= '9') window.pp(e.key);
+  else if (e.key === 'Backspace') window.pp('d');
+  else if (e.key === 'Enter') window.pp('ok');
 });
 
 // ==================== NAVIGATION ====================
