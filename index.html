@@ -350,8 +350,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="sc2">
       <b style="font-size:14px">🔗 ID заведения</b>
       <p style="font-size:12px;color:var(--t3);margin:6px 0 8px">Передай эту ссылку сотруднику — только для этого заведения</p>
-      <div id="clientLink" style="background:var(--s2);border-radius:var(--r2);padding:10px 14px;font-size:12px;color:var(--acc);word-break:break-all;cursor:pointer" onclick="copyLink()"></div>
-      <p style="font-size:11px;color:var(--t3);margin-top:6px">Нажмите чтобы скопировать</p>
+      <div id="clientLink" style="background:var(--s2);border-radius:var(--r2);padding:10px 14px;font-size:12px;color:var(--acc);word-break:break-all;cursor:pointer;margin-bottom:8px" onclick="copyLink()"></div>
+      <div class="row" style="gap:8px">
+        <button class="btn btn-p btn-sm" onclick="copyLink()">📋 Скопировать ссылку для сотрудника</button>
+        <button class="btn btn-s btn-sm" onclick="copyLinkSimple()">🔗 Только ссылка (без Firebase)</button>
+      </div>
+      <p style="font-size:11px;color:var(--t3);margin-top:6px">Ссылка для сотрудника содержит настройки Firebase — открыв её, всё подключится автоматически</p>
     </div>
     <div class="sc2">
       <b style="font-size:14px">🗑️ Удалить все данные</b>
@@ -527,8 +531,25 @@ function go(p){
     document.getElementById('setName').value=D.cfg.name||'';
     var base=window.location.origin+window.location.pathname;
     var link=base+'?id='+CLIENT_ID;
+    // Show smart link if Firebase connected
+    var fbCfg=localStorage.getItem('zp_fb_cfg');
+    if(fbCfg){
+      try{
+        var cfg=JSON.parse(fbCfg);
+        link+='&fbUrl='+encodeURIComponent(cfg.url)+'&fbKey='+encodeURIComponent(cfg.key)+'&fbPrj='+encodeURIComponent(cfg.project);
+      }catch(e){}
+    }
     var el=document.getElementById('clientLink');
     if(el) el.textContent=link;
+    // Fill firebase fields
+    if(fbCfg){
+      try{
+        var c=JSON.parse(fbCfg);
+        var fu=document.getElementById('fbUrl'); if(fu) fu.value=c.url||'';
+        var fk=document.getElementById('fbKey'); if(fk) fk.value=c.key||'';
+        var fp=document.getElementById('fbProject'); if(fp) fp.value=c.project||'';
+      }catch(e){}
+    }
   }
 }
 
@@ -1145,9 +1166,23 @@ function changePin(){
   document.getElementById('newPin').value='';
   notif('PIN изменён ✓');
 }
+function copyLinkSimple(){
+  var base=window.location.origin+window.location.pathname;
+  var link=base+'?id='+CLIENT_ID;
+  if(navigator.clipboard){ navigator.clipboard.writeText(link).then(function(){ notif('Простая ссылка скопирована ✓'); }); }
+  else { var ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); notif('Простая ссылка скопирована ✓'); }
+}
 function copyLink(){
   var base=window.location.origin+window.location.pathname;
   var link=base+'?id='+CLIENT_ID;
+  // Include Firebase config in link so staff don't need to enter it manually
+  var fbCfg = localStorage.getItem('zp_fb_cfg');
+  if(fbCfg){
+    try{
+      var cfg = JSON.parse(fbCfg);
+      link += '&fbUrl='+encodeURIComponent(cfg.url)+'&fbKey='+encodeURIComponent(cfg.key)+'&fbPrj='+encodeURIComponent(cfg.project);
+    }catch(e){}
+  }
   if(navigator.clipboard){ navigator.clipboard.writeText(link).then(function(){ notif('Ссылка скопирована ✓'); }); }
   else { var ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); notif('Ссылка скопирована ✓'); }
 }
@@ -1345,10 +1380,24 @@ function notif(msg,type){
 var CLIENT_ID = (function(){
   var params = new URLSearchParams(window.location.search);
   var id = params.get('id') || params.get('client') || 'default';
-  // sanitize: only alphanumeric and dash
   return id.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,30) || 'default';
 })();
 var STORE_KEY = 'zp2_' + CLIENT_ID;
+
+// Auto-load Firebase config from URL if present (для сотрудников)
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var fbUrl = params.get('fbUrl');
+  var fbKey = params.get('fbKey');
+  var fbPrj = params.get('fbPrj');
+  if(fbUrl && fbKey && fbPrj){
+    var cfg = {url: decodeURIComponent(fbUrl), key: decodeURIComponent(fbKey), project: decodeURIComponent(fbPrj)};
+    localStorage.setItem('zp_fb_cfg', JSON.stringify(cfg));
+    // Clean URL without reloading (remove firebase params from address bar)
+    var cleanUrl = window.location.origin + window.location.pathname + '?id=' + CLIENT_ID;
+    window.history.replaceState({}, '', cleanUrl);
+  }
+})();
 
 // Override save/load to use client-specific key
 function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(D));}catch(e){}}
