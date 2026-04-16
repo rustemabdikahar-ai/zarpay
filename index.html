@@ -913,8 +913,8 @@ function exportXL(wn){
   // Format date as DD/MM without year
   function fmtD(s){
     var d=new Date(s+'T12:00:00');
-    var day=d.getDate()<10?'0'+d.getDate():''+d.getDate();
-    var mon=(d.getMonth()+1)<10?'0'+(d.getMonth()+1):''+( d.getMonth()+1);
+    var day=('0'+d.getDate()).slice(-2);
+    var mon=('0'+(d.getMonth()+1)).slice(-2);
     return day+'/'+mon;
   }
 
@@ -1036,23 +1036,25 @@ function exportXL(wn){
     }
 
     // Row heights
-    var rowH={};
-    rowH[0]={hpt:22}; // header
+    var wsRows=[];
+    wsRows.push({hpt:22}); // header
     for(var r=1;r<rows.length;r++){
       var rv=rows[r][0]||'';
-      if(typeof rv==='string' && rv.indexOf('— ')===0) rowH[r]={hpt:16};
-      else rowH[r]={hpt:20};
+      if(typeof rv==='string' && rv.indexOf('— ')===0) wsRows.push({hpt:16});
+      else wsRows.push({hpt:20});
     }
-    ws['!rows']=Object.keys(rowH).map(function(k){ return rowH[k]; });
+    ws['!rows']=wsRows;
 
     // Page setup for A4 landscape
     ws['!pageSetup']={
-      paperSize:9, // A4
+      paperSize:9,
       orientation:'landscape',
       fitToPage:true,
       fitToWidth:1,
-      fitToHeight:0
+      fitToHeight:0,
+      scale:100
     };
+    ws['!printHeader']='&L'+dname+' - '+D.cfg.name+'&R&P/&N';
 
     XLSX.utils.book_append_sheet(wb,ws,dname);
   });
