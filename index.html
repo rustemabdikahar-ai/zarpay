@@ -1307,11 +1307,20 @@ function initFirebase(cfg){
     // Listen for remote changes
     fbRef.on('value', function(snapshot){
       var remoteData = snapshot.val();
-      if(remoteData){
-        D = remoteData;
-        save(); // also save locally as backup
+      if(remoteData && remoteData.staff && remoteData.week){
+        // Valid remote data - merge carefully
+        D.staff = remoteData.staff || [];
+        D.shifts = remoteData.shifts || [];
+        D.deds = remoteData.deds || [];
+        D.history = remoteData.history || [];
+        D.week = remoteData.week || D.week;
+        D.cfg = remoteData.cfg || D.cfg;
+        save(); // backup locally
         winfo();
         rdash();
+      } else {
+        // Firebase is empty - push our local data up
+        fbRef.set(D);
       }
       setSyncStatus('online');
     }, function(err){
