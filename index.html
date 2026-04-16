@@ -1277,20 +1277,30 @@ function connectFirebase(){
 
 function initFirebase(cfg){
   try {
-    // Cleanup existing
-    if(fbApp){ try{ firebase.app().delete(); }catch(e){} }
+    // Cleanup existing app properly
+    if(fbRef){ try{ fbRef.off(); }catch(e){} fbRef=null; }
+    if(fbDb){ fbDb=null; }
+    // Delete existing firebase apps
+    try{
+      firebase.apps.forEach(function(app){ app.delete(); });
+    }catch(e){}
 
     var firebaseConfig = {
       apiKey: cfg.key,
       databaseURL: cfg.url,
       projectId: cfg.project,
-      appId: '1:000000000000:web:000000000000'
     };
 
     fbApp = firebase.initializeApp(firebaseConfig);
-    fbDb = firebase.database();
+    fbDb = firebase.database(fbApp);
     fbRef = fbDb.ref('zarpay/' + CLIENT_ID);
     fbConnected = true;
+    
+    // Push current local data to Firebase immediately on connect
+    setSyncStatus('syncing');
+    fbRef.set(D).then(function(){
+      setSyncStatus('online');
+    }).catch(function(e){ setSyncStatus('offline'); });
 
     setSyncStatus('syncing');
 
