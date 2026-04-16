@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZarPay — Учёт зарплаты</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -30,6 +32,26 @@
 .pin-btn:active{transform:scale(.93);background:var(--s2)}
 .pin-err{color:var(--red);font-size:12px;min-height:18px;text-align:center}
 .pin-hint{color:var(--t3);font-size:11px;text-align:center;line-height:1.7}
+
+
+/* SYNC STATUS */
+.sync-bar{position:fixed;top:0;left:0;right:0;height:3px;background:var(--grn);z-index:9998;opacity:0;transition:opacity .3s}
+.sync-bar.active{opacity:1;animation:syncpulse 1s infinite}
+@keyframes syncpulse{0%,100%{opacity:.4}50%{opacity:1}}
+.sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.sync-dot.online{background:var(--grn)}
+.sync-dot.offline{background:var(--yel)}
+.sync-dot.syncing{background:var(--acc);animation:syncpulse .8s infinite}
+.sync-status{display:flex;align-items:center;font-size:11px;color:var(--t3);padding:4px 10px;background:var(--s2);border-radius:99px;white-space:nowrap}
+
+
+/* STAFF PICKER */
+.sh-card{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r2);cursor:pointer;border:1px solid var(--b1);background:var(--s2);transition:all .15s;user-select:none}
+.sh-card:hover{border-color:var(--acc);background:var(--s3)}
+.sh-card.selected{border-color:var(--acc);background:rgba(59,130,246,.15)}
+.sh-avatar{width:34px;height:34px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0}
+.sh-card.hall-card .sh-avatar{background:rgba(59,130,246,.2);color:#3b82f6}
+.sh-card.kitchen-card .sh-avatar{background:rgba(245,158,11,.2);color:#f59e0b}
 
 body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;overflow-x:hidden}
 .layout{display:flex;min-height:100vh}
@@ -142,10 +164,14 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div class="pin-hint">По умолчанию: <b>1234</b><br>Сменить в Настройках</div>
 </div>
 
+<div class="sync-bar" id="syncBar"></div>
 <div class="layout">
 
 <nav class="sidebar" id="sidebar">
-  <div class="logo">ZarPay <small>Учёт зарплаты v2.0</small></div>
+  <div class="logo" style="display:flex;align-items:center;justify-content:space-between">
+  <span>ZarPay <small style="display:block">Учёт зарплаты v2.0</small></span>
+  <span id="sideCloseBtn" onclick="closeSidebar()" style="display:none;cursor:pointer;font-size:20px;padding:4px 8px;color:var(--t3);-webkit-text-fill-color:var(--t3)">✕</span>
+</div>
   <div class="nav-g">
     <div class="nav-lbl">Главное</div>
     <div class="nav-i on" id="ni-dash" onclick="go('dash')"><span class="ic">📊</span>Сводка</div>
@@ -168,11 +194,15 @@ tr:hover td{background:rgba(255,255,255,.015)}
   </div>
 </nav>
 
+<!-- Mobile overlay to close sidebar -->
+<div id="sideOverlay" onclick="closeSidebar()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99"></div>
+
 <div class="main">
   <div class="topbar">
-    <button class="btn btn-s btn-ic" id="menuBtn" style="display:none" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+    <button class="btn btn-s btn-ic" id="menuBtn" style="display:none" onclick="toggleSidebar()">☰</button>
     <div class="topbar-title" id="pageTitle">Сводка</div>
     <div class="row">
+      <div class="sync-status" id="syncStatus"><span class="sync-dot offline" id="syncDot"></span><span id="syncText">Локально</span></div>
       <button class="btn btn-s" onclick="showModal('mNewWeek')">🔄 Новая неделя</button>
       <button class="btn btn-s" onclick="exportXL(D.week.num)">⬇️ Excel</button>
     </div>
@@ -248,6 +278,40 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
   <!-- SETTINGS -->
   <div class="page" id="p-set">
+    <!-- FIREBASE CONFIG -->
+    <div class="sc2" id="firebaseSection">
+      <b style="font-size:14px">☁️ Синхронизация (Firebase)</b>
+      <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">Включите облачную синхронизацию — данные будут видны на всех устройствах сразу</p>
+      <div id="fbConfigForm">
+        <div class="fg"><label class="fl">Database URL</label>
+          <input class="fi" id="fbUrl" placeholder="https://your-project-default-rtdb.firebaseio.com"></div>
+        <div class="fg"><label class="fl">API Key</label>
+          <input class="fi" id="fbKey" placeholder="AIzaSy..."></div>
+        <div class="fg"><label class="fl">Project ID</label>
+          <input class="fi" id="fbProject" placeholder="your-project-id"></div>
+        <div class="row">
+          <button class="btn btn-p" onclick="connectFirebase()">☁️ Подключить</button>
+          <button class="btn btn-s" onclick="disconnectFirebase()">Отключить</button>
+        </div>
+        <p style="font-size:11px;color:var(--t3);margin-top:10px">
+          Как получить: <a href="https://console.firebase.google.com" target="_blank" style="color:var(--acc)">console.firebase.google.com</a> → Создать проект → Realtime Database → Правила: установить true
+        </p>
+      </div>
+      <div id="fbStatus" style="margin-top:10px;font-size:13px;color:var(--t3)"></div>
+    </div>
+
+    <!-- EXPORT / IMPORT -->
+    <div class="sc2">
+      <b style="font-size:14px">💾 Резервная копия</b>
+      <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">Сохраните все данные в файл или восстановите из файла</p>
+      <div class="row">
+        <button class="btn btn-p" onclick="exportBackup()">⬇️ Скачать резервную копию</button>
+        <button class="btn btn-s" onclick="document.getElementById('importFile').click()">⬆️ Загрузить копию</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(this)">
+      </div>
+      <p style="font-size:11px;color:var(--t3);margin-top:8px">Файл сохраняется как JSON — передайте другому сотруднику для синхронизации</p>
+    </div>
+
     <div class="sc2">
       <b style="font-size:14px">🏢 Название заведения</b>
       <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">Используется в печатных формах</p>
@@ -309,13 +373,26 @@ tr:hover td{background:rgba(255,255,255,.015)}
 <div class="ov" id="mShift">
   <div class="modal">
     <div class="mt">📅 Добавить рабочий день</div>
-    <div class="fg"><label class="fl">Сотрудник</label><select class="fi" id="shSt" onchange="shAR()"></select></div>
+    <div class="fg">
+      <label class="fl">Сотрудник</label>
+      <!-- Фильтр по отделу (Б) -->
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <div class="tab on" id="shTab-all" onclick="shFilter('all',this)" style="padding:5px 12px;font-size:12px">Все</div>
+        <div class="tab" id="shTab-hall" onclick="shFilter('hall',this)" style="padding:5px 12px;font-size:12px">🍽️ Зал</div>
+        <div class="tab" id="shTab-kit" onclick="shFilter('kitchen',this)" style="padding:5px 12px;font-size:12px">👨‍🍳 Кухня</div>
+      </div>
+      <!-- Поиск (А) -->
+      <input class="fi" id="shSearch" placeholder="🔍 Поиск по имени..." oninput="shRenderList()" style="margin-bottom:8px">
+      <!-- Список сотрудников -->
+      <div id="shStList" style="display:flex;flex-direction:column;gap:4px;max-height:200px;overflow-y:auto"></div>
+      <input type="hidden" id="shSt">
+    </div>
     <div class="fg"><label class="fl">Дата</label><input class="fi" id="shDt" type="date"></div>
     <div class="fg"><label class="fl">Смена</label>
       <select class="fi" id="shM" onchange="shC()">
         <option value="1">Полная смена (×1.0)</option>
         <option value="0.5">Полсмены (×0.5)</option>
-        <option value="0.75">¾ смены (×0.75)</option>
+        <option value="0.7">0.7 смены (×0.7)</option>
         <option value="1.5">Полтора смены (×1.5)</option>
       </select>
     </div>
@@ -333,11 +410,13 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div class="modal">
     <div class="mt">✏️ Редактировать запись</div>
     <input type="hidden" id="eShId">
+    <div class="fg"><label class="fl">Дата</label><input class="fi" id="eShDt" type="date"></div>
+    <div class="fg"><label class="fl">Дата</label><input class="fi" id="eShDt" type="date"></div>
     <div class="fg"><label class="fl">Смена</label>
       <select class="fi" id="eShM">
         <option value="1">Полная смена (×1.0)</option>
         <option value="0.5">Полсмены (×0.5)</option>
-        <option value="0.75">¾ смены (×0.75)</option>
+        <option value="0.7">0.7 смены (×0.7)</option>
         <option value="1.5">Полтора смены (×1.5)</option>
       </select>
     </div>
@@ -395,6 +474,7 @@ var D={staff:[],shifts:[],deds:[],history:[],week:{start:td(),num:1},cfg:{name:'
 var dF='all',sF='all';
 
 function td(){return new Date().toISOString().split('T')[0];}
+function yesterday(){var d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split('T')[0];}
 function uid(){return '_'+Math.random().toString(36).slice(2)+Date.now().toString(36);}
 function tenge(n){return Math.round(n||0).toLocaleString('ru-RU')+' ₸';}
 function fd(s){return s?new Date(s+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}):''}
@@ -624,10 +704,54 @@ function delSt(id){
 }
 
 // SHIFT CRUD
+var _shDeptFilter = 'all';
+var _shSelectedId = null;
+
+function shFilter(dept, el){
+  _shDeptFilter = dept;
+  document.querySelectorAll('#mShift .tab').forEach(function(t){t.classList.remove('on');});
+  el.classList.add('on');
+  shRenderList();
+}
+
+function shRenderList(){
+  var search = (document.getElementById('shSearch').value || '').toLowerCase();
+  var list = D.staff.filter(function(s){
+    if(!s.act) return false;
+    if(_shDeptFilter !== 'all' && s.dept !== _shDeptFilter) return false;
+    if(search && s.name.toLowerCase().indexOf(search) === -1) return false;
+    return true;
+  });
+
+  var html = '';
+  if(!list.length){
+    html = '<div style="text-align:center;padding:16px;color:var(--t3);font-size:13px">Не найдено</div>';
+  }
+  list.forEach(function(s){
+    var cls = s.dept === 'hall' ? 'hall-card' : 'kitchen-card';
+    var selected = _shSelectedId === s.id ? ' selected' : '';
+    html += '<div class="sh-card '+cls+selected+'" data-id="'+s.id+'" data-rate="'+s.rate+'" onclick="shSelect(this.dataset.id, this.dataset.rate)">' +
+      '<div class="sh-avatar">'+s.name.charAt(0)+'</div>' +
+      '<div style="flex:1">' +
+        '<div style="font-size:13px;font-weight:600">'+s.name+'</div>' +
+        '<div style="font-size:11px;color:var(--t3)">'+s.role+' · '+(s.dept==='hall'?'Зал':'Кухня')+'</div>' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--t3)">'+tenge(s.rate)+'/день</div>' +
+    '</div>';
+  });
+  document.getElementById('shStList').innerHTML = html;
+}
+
+function shSelect(id, rate){
+  _shSelectedId = id;
+  document.getElementById('shSt').value = id;
+  document.getElementById('shR').value = parseFloat(rate)||0;
+  shRenderList();
+  shC();
+}
+
 function shAR(){
-  var sel=document.getElementById('shSt');
-  var opt=sel.options[sel.selectedIndex];
-  if(opt)document.getElementById('shR').value=opt.getAttribute('data-rate')||'';
+  // kept for compatibility - now handled by shSelect
   shC();
 }
 function shC(){
@@ -636,13 +760,15 @@ function shC(){
 }
 function addShift(){
   var sid=g('shSt'),dt=g('shDt'),rate=parseFloat(g('shR')),mult=parseFloat(g('shM')),cm=g('shCm');
-  if(!sid||!dt||!rate||!mult){notif('Заполните все поля','er');return;}
+  if(!sid){notif('Выберите сотрудника','er');return;}
+  if(!dt||!rate||!mult){notif('Заполните все поля','er');return;}
   D.shifts.push({id:uid(),sid:sid,date:dt,rate:rate,mult:mult,earned:rate*mult,comment:cm,wn:D.week.num});
   save();closeModal('mShift');rweek();rdash();notif('Смена добавлена ✓');
 }
 function openES(id){
   var s=D.shifts.find(function(x){return x.id===id;});if(!s)return;
   document.getElementById('eShId').value=id;
+  document.getElementById('eShDt').value=s.date;
   document.getElementById('eShM').value=s.mult;
   document.getElementById('eShR').value=s.rate;
   document.getElementById('eShC').value=s.comment||'';
@@ -650,6 +776,7 @@ function openES(id){
 }
 function saveShift(){
   var id=g('eShId'),s=D.shifts.find(function(x){return x.id===id;});if(!s)return;
+  s.date=g('eShDt')||s.date;
   s.mult=parseFloat(g('eShM'));s.rate=parseFloat(g('eShR'));s.earned=s.rate*s.mult;s.comment=g('eShC');
   save();closeModal('mEditShift');rweek();rdash();notif('Обновлено ✓');
 }
@@ -781,7 +908,8 @@ function showModal(id){
     sel.innerHTML=D.staff.filter(function(s){return s.act;}).map(function(s){
       return '<option value="'+s.id+'" data-rate="'+s.rate+'">'+s.name+' ('+(s.dept==='hall'?'Зал':'Кухня')+')</option>';
     }).join('');
-    document.getElementById('shDt').value=td();
+    var yest=new Date();yest.setDate(yest.getDate()-1);
+    document.getElementById('shDt').value=yest.toISOString().split('T')[0];
     shAR();
   }
   if(id==='mDed'){
@@ -814,6 +942,181 @@ function copyLink(){
   if(navigator.clipboard){ navigator.clipboard.writeText(link).then(function(){ notif('Ссылка скопирована ✓'); }); }
   else { var ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); notif('Ссылка скопирована ✓'); }
 }
+function toggleSidebar(){
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('sideOverlay');
+  var cb = document.getElementById('sideCloseBtn');
+  var isOpen = sb.classList.contains('open');
+  if(isOpen){ closeSidebar(); }
+  else {
+    sb.classList.add('open');
+    if(ov) { ov.style.display='block'; }
+    if(cb) { cb.style.display='block'; }
+  }
+}
+function closeSidebar(){
+  var sb = document.getElementById('sidebar');
+  var ov = document.getElementById('sideOverlay');
+  var cb = document.getElementById('sideCloseBtn');
+  sb.classList.remove('open');
+  if(ov) ov.style.display='none';
+  if(cb) cb.style.display='none';
+}
+// Close sidebar when nav item clicked on mobile
+document.querySelectorAll('.nav-i').forEach(function(el){
+  el.addEventListener('click', function(){
+    if(window.innerWidth <= 900) closeSidebar();
+  });
+});
+// =============================================
+// EXPORT / IMPORT BACKUP
+// =============================================
+function exportBackup(){
+  var data = JSON.stringify(D, null, 2);
+  var blob = new Blob([data], {type:'application/json'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'ZarPay_backup_' + CLIENT_ID + '_' + new Date().toISOString().split('T')[0] + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  notif('Резервная копия скачана ✓');
+}
+function importBackup(input){
+  var file = input.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      var imported = JSON.parse(e.target.result);
+      if(!imported.staff || !imported.week){ notif('Неверный формат файла','er'); return; }
+      if(!confirm('Загрузить резервную копию? Текущие данные будут заменены.')) return;
+      D = imported;
+      save();
+      winfo();
+      rdash();
+      notif('Данные восстановлены ✓');
+    } catch(err) { notif('Ошибка чтения файла','er'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// =============================================
+// FIREBASE SYNC
+// =============================================
+var fbApp = null, fbDb = null, fbRef = null, fbConnected = false;
+
+function setSyncStatus(status){
+  var dot = document.getElementById('syncDot');
+  var txt = document.getElementById('syncText');
+  var bar = document.getElementById('syncBar');
+  if(!dot) return;
+  dot.className = 'sync-dot ' + status;
+  if(status === 'online'){ txt.textContent = 'Синхронизировано'; bar.classList.remove('active'); }
+  else if(status === 'syncing'){ txt.textContent = 'Синхронизация...'; bar.classList.add('active'); }
+  else if(status === 'offline'){ txt.textContent = 'Локально'; bar.classList.remove('active'); }
+}
+
+function connectFirebase(){
+  var url = document.getElementById('fbUrl').value.trim();
+  var key = document.getElementById('fbKey').value.trim();
+  var project = document.getElementById('fbProject').value.trim();
+  if(!url || !key || !project){ notif('Заполните все поля Firebase','er'); return; }
+
+  // Save config
+  var cfg = {url:url, key:key, project:project};
+  localStorage.setItem('zp_fb_cfg', JSON.stringify(cfg));
+
+  initFirebase(cfg);
+}
+
+function initFirebase(cfg){
+  try {
+    // Cleanup existing
+    if(fbApp){ try{ firebase.app().delete(); }catch(e){} }
+
+    var firebaseConfig = {
+      apiKey: cfg.key,
+      databaseURL: cfg.url,
+      projectId: cfg.project,
+      appId: '1:000000000000:web:000000000000'
+    };
+
+    fbApp = firebase.initializeApp(firebaseConfig);
+    fbDb = firebase.database();
+    fbRef = fbDb.ref('zarpay/' + CLIENT_ID);
+    fbConnected = true;
+
+    setSyncStatus('syncing');
+
+    // Listen for remote changes
+    fbRef.on('value', function(snapshot){
+      var remoteData = snapshot.val();
+      if(remoteData){
+        D = remoteData;
+        save(); // also save locally as backup
+        winfo();
+        rdash();
+      }
+      setSyncStatus('online');
+    }, function(err){
+      setSyncStatus('offline');
+      notif('Ошибка Firebase: ' + err.message, 'er');
+    });
+
+    var st = document.getElementById('fbStatus');
+    if(st) st.innerHTML = '<span style="color:var(--grn)">✓ Подключено к ' + cfg.project + '</span>';
+    notif('Firebase подключён ✓');
+
+  } catch(err){
+    setSyncStatus('offline');
+    notif('Ошибка подключения: ' + err.message, 'er');
+  }
+}
+
+function disconnectFirebase(){
+  if(fbRef){ fbRef.off(); }
+  fbRef = null; fbDb = null; fbApp = null; fbConnected = false;
+  localStorage.removeItem('zp_fb_cfg');
+  setSyncStatus('offline');
+  var st = document.getElementById('fbStatus');
+  if(st) st.innerHTML = '';
+  notif('Синхронизация отключена');
+}
+
+// Override save to also push to Firebase
+var _localSave = null;
+function save(){
+  try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+  if(fbConnected && fbRef){
+    setSyncStatus('syncing');
+    fbRef.set(D).then(function(){
+      setSyncStatus('online');
+    }).catch(function(err){
+      setSyncStatus('offline');
+    });
+  }
+}
+
+// Auto-reconnect Firebase on load
+function tryAutoConnectFirebase(){
+  var saved = localStorage.getItem('zp_fb_cfg');
+  if(saved){
+    try{
+      var cfg = JSON.parse(saved);
+      // Fill in fields if settings page rendered
+      var fu = document.getElementById('fbUrl');
+      var fk = document.getElementById('fbKey');
+      var fp = document.getElementById('fbProject');
+      if(fu) fu.value = cfg.url;
+      if(fk) fk.value = cfg.key;
+      if(fp) fp.value = cfg.project;
+      initFirebase(cfg);
+    }catch(e){}
+  }
+}
+
 function notif(msg,type){
   var n=document.createElement('div');
   n.className='notif '+(type||'ok');
@@ -894,6 +1197,7 @@ document.addEventListener('keydown', function(e){
 
 function initApp(){
   rdash();
+  tryAutoConnectFirebase();
 }
 </script>
 </body>
