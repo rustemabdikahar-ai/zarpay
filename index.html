@@ -211,10 +211,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <!-- DASHBOARD -->
   <div class="page on" id="p-dash">
     <div class="stats">
-      <div class="scard bl"><div class="scard-ico">💰</div><div class="scard-val" id="dTotal">0 ₸</div><div class="scard-lbl">Фонд недели</div></div>
+      <div class="scard bl"><div class="scard-ico">💰</div><div class="scard-val" id="dTotal">0 ₸</div><div class="scard-lbl">Фонд недели (за вычетом удерж.)</div></div>
       <div class="scard gr"><div class="scard-ico">👤</div><div class="scard-val" id="dStaff">0</div><div class="scard-lbl">Активных сотр.</div></div>
-      <div class="scard ye"><div class="scard-ico">🍽️</div><div class="scard-val" id="dHall">0 ₸</div><div class="scard-lbl">Зал</div></div>
-      <div class="scard pu"><div class="scard-ico">👨‍🍳</div><div class="scard-val" id="dKit">0 ₸</div><div class="scard-lbl">Кухня</div></div>
+      <div class="scard ye"><div class="scard-ico">🍽️</div><div class="scard-val" id="dHall">0 ₸</div><div class="scard-lbl">Зал (за вычетом удерж.)</div></div>
+      <div class="scard pu"><div class="scard-ico">👨‍🍳</div><div class="scard-val" id="dKit">0 ₸</div><div class="scard-lbl">Кухня (за вычетом удерж.)</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px">
       <div><h3 style="font-size:13px;font-weight:700;margin-bottom:12px">🏆 Топ за неделю</h3><div id="dTop"></div></div>
@@ -224,6 +224,25 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <button class="btn btn-p" onclick="go('week')">📅 Открыть неделю</button>
       <button class="btn btn-s" onclick="showModal('mNewWeek')">🔄 Новая неделя</button>
       <button class="btn btn-s" onclick="exportXL(D.week.num)">⬇️ Excel</button>
+    </div>
+
+    <!-- DAILY BREAKDOWN -->
+    <div style="margin-top:28px">
+      <h3 style="font-size:13px;font-weight:700;margin-bottom:14px">📆 Фонд по дням</h3>
+      <div class="tw">
+        <table>
+          <thead><tr>
+            <th>День</th>
+            <th>Дата</th>
+            <th>🍽️ Зал</th>
+            <th>👨‍🍳 Кухня</th>
+            <th>💸 Удержания</th>
+            <th>💰 Итого</th>
+          </tr></thead>
+          <tbody id="dDailyBody"></tbody>
+          <tfoot id="dDailyFoot"></tfoot>
+        </table>
+      </div>
     </div>
   </div>
 
@@ -527,10 +546,17 @@ function rdash(){
   var dedt=dd.reduce(function(a,d){return a+d.amt;},0);
   var hE=0,kE=0;
   sh.forEach(function(s){var st=byId(s.sid);if(st){if(st.dept==='hall')hE+=s.earned;else kE+=s.earned;}});
+  // Deductions by dept
+  var hallDed=0, kitDed=0;
+  dd.forEach(function(d){
+    var st=byId(d.sid);
+    if(st){ if(st.dept==='hall') hallDed+=d.amt; else kitDed+=d.amt; }
+    else { hallDed+=d.amt/2; kitDed+=d.amt/2; } // unknown dept split
+  });
   document.getElementById('dTotal').textContent=tenge(earned-dedt);
   document.getElementById('dStaff').textContent=D.staff.filter(function(s){return s.act;}).length;
-  document.getElementById('dHall').textContent=tenge(hE);
-  document.getElementById('dKit').textContent=tenge(kE);
+  document.getElementById('dHall').textContent=tenge(hE-hallDed);
+  document.getElementById('dKit').textContent=tenge(kE-kitDed);
   var map={};
   sh.forEach(function(s){map[s.sid]=(map[s.sid]||0)+s.earned;});
   dd.forEach(function(d){map[d.sid]=(map[d.sid]||0)-d.amt;});
@@ -552,6 +578,59 @@ function rdash(){
       '<div style="font-weight:600;font-size:13px">'+tenge(s.earned)+'</div></div>';
   });
   document.getElementById('dToday').innerHTML=th||'<div class="empty" style="padding:20px"><p>Смены не заполнены</p></div>';
+
+  // DAILY BREAKDOWN
+  // Collect all unique dates in current week
+  var dateMap = {};
+  sh.forEach(function(s){
+    if(!dateMap[s.date]) dateMap[s.date]={hall:0,kitchen:0,ded:0};
+    var st=byId(s.sid);
+    if(st){
+      if(st.dept==='hall') dateMap[s.date].hall+=s.earned;
+      else dateMap[s.date].kitchen+=s.earned;
+    }
+  });
+  dd.forEach(function(d){
+    if(!dateMap[d.date]) dateMap[d.date]={hall:0,kitchen:0,ded:0};
+    dateMap[d.date].ded+=d.amt;
+  });
+
+  var dates=Object.keys(dateMap).sort();
+  var dayNames=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  var totalHall=0,totalKit=0,totalDed=0,totalAll=0;
+  var dRows='';
+
+  if(dates.length===0){
+    dRows='<tr><td colspan="6" style="text-align:center;color:var(--t3);padding:20px;font-size:13px">Нет данных за эту неделю</td></tr>';
+  }
+
+  dates.forEach(function(dt){
+    var d=dateMap[dt];
+    var dayTotal=d.hall+d.kitchen-d.ded;
+    var dayObj=new Date(dt+'T12:00:00');
+    var dayN=dayNames[dayObj.getDay()];
+    var isToday=dt===td();
+    totalHall+=d.hall; totalKit+=d.kitchen; totalDed+=d.ded; totalAll+=dayTotal;
+    dRows+='<tr style="'+(isToday?'background:rgba(59,130,246,.06)':'')+'">'+
+      '<td style="font-weight:600;color:'+(isToday?'var(--acc)':'var(--t2)')+'">'+dayN+(isToday?' <span style="font-size:10px;color:var(--acc)">(сегодня)</span>':'')+'</td>'+
+      '<td style="color:var(--t3);font-size:12px">'+fd(dt)+'</td>'+
+      '<td style="color:#3b82f6;font-weight:600">'+tenge(d.hall)+'</td>'+
+      '<td style="color:#f59e0b;font-weight:600">'+tenge(d.kitchen)+'</td>'+
+      '<td style="color:var(--red)">'+( d.ded>0?'−'+tenge(d.ded):'-')+'</td>'+
+      '<td style="font-weight:700;font-family:Unbounded,sans-serif">'+tenge(dayTotal)+'</td>'+
+      '</tr>';
+  });
+
+  var dFoot='<tr style="background:var(--s2)">'+
+    '<td colspan="2" style="font-weight:700;font-size:12px">ИТОГО ЗА НЕДЕЛЮ</td>'+
+    '<td style="color:#3b82f6;font-weight:700">'+tenge(totalHall)+'</td>'+
+    '<td style="color:#f59e0b;font-weight:700">'+tenge(totalKit)+'</td>'+
+    '<td style="color:var(--red);font-weight:700">'+( totalDed>0?'−'+tenge(totalDed):'-')+'</td>'+
+    '<td style="font-weight:700;font-family:Unbounded,sans-serif;color:var(--grn)">'+tenge(totalAll)+'</td>'+
+    '</tr>';
+
+  document.getElementById('dDailyBody').innerHTML=dRows;
+  document.getElementById('dDailyFoot').innerHTML=dFoot;
 }
 
 function rweek(){
