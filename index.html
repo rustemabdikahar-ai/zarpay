@@ -903,32 +903,160 @@ function exportXL(wn){
   var sh=D.shifts.filter(function(s){return s.wn===wn;});
   var dd=D.deds.filter(function(d){return d.wn===wn;});
   var wb=XLSX.utils.book_new();
+
+  // Get all unique sorted dates
+  var allDates={};
+  sh.forEach(function(s){ allDates[s.date]=1; });
+  dd.forEach(function(d){ allDates[d.date]=1; });
+  var dates=Object.keys(allDates).sort();
+
+  // Format date as DD/MM without year
+  function fmtD(s){
+    var d=new Date(s+'T12:00:00');
+    var day=d.getDate()<10?'0'+d.getDate():''+d.getDate();
+    var mon=(d.getMonth()+1)<10?'0'+(d.getMonth()+1):''+( d.getMonth()+1);
+    return day+'/'+mon;
+  }
+
   ['hall','kitchen'].forEach(function(dept){
     var dname=dept==='hall'?'Зал':'Кухня';
-    var rows=[['ФИО','Должность','Дата','Смена','Ставка/день','Начислено','Удержание','Причина','Итого','Комментарий']];
-    D.staff.filter(function(s){return s.dept===dept;}).forEach(function(st){
-      var sth=sh.filter(function(s){return s.sid===st.id;});
-      var std=dd.filter(function(d){return d.sid===st.id;});
-      var earned=sth.reduce(function(a,s){return a+s.earned;},0);
-      var dedt=std.reduce(function(a,d){return a+d.amt;},0);
-      sth.forEach(function(s){rows.push([st.name,st.role,s.date,'×'+s.mult,s.rate,s.earned,'','','',s.comment||'']);});
-      std.forEach(function(d){rows.push([st.name,st.role,d.date,'','','',d.amt,d.reason,'','']);});
-      rows.push(['ИТОГО: '+st.name,'','','','',earned,dedt,'',earned-dedt,'']);
-      rows.push([]);
+
+    // Get staff sorted by role then name
+    var staffList=D.staff.filter(function(s){ return s.dept===dept && s.act; });
+    staffList.sort(function(a,b){
+      if(a.role<b.role) return -1;
+      if(a.role>b.role) return 1;
+      if(a.name<b.name) return -1;
+      return 1;
     });
+
+    // Build header row: ФИО | Должность | date1 | date2 ... | Удержания | К выплате | Подпись
+    var header=['ФИО','Должность'];
+    dates.forEach(function(dt){ header.push(fmtD(dt)); });
+    header.push('Удержания','К ВЫПЛАТЕ','Подпись');
+
+    var rows=[header];
+    var colTotals=new Array(dates.length).fill(0);
+    var grandEarned=0, grandDed=0;
+    var currentRole='';
+
+    staffList.forEach(function(st){
+      // Role separator row
+      if(st.role!==currentRole){
+        currentRole=st.role;
+        var sepRow=['— '+st.role.toUpperCase()+' —'];
+        for(var i=1;i<header.length;i++) sepRow.push('');
+        rows.push(sepRow);
+      }
+
+      var stsh=sh.filter(function(s){ return s.sid===st.id; });
+      var stdd=dd.filter(function(d){ return d.sid===st.id; });
+      var earned=stsh.reduce(function(a,s){ return a+s.earned; },0);
+      var ded=stdd.reduce(function(a,d){ return a+d.amt; },0);
+      var net=earned-ded;
+      grandEarned+=earned; grandDed+=ded;
+
+      var row=[st.name, st.role];
+      dates.forEach(function(dt,i){
+        var dayShifts=stsh.filter(function(s){ return s.date===dt; });
+        var dayEarned=dayShifts.reduce(function(a,s){ return a+s.earned; },0);
+        row.push(dayEarned>0 ? dayEarned : '');
+        colTotals[i]+=dayEarned;
+      });
+      row.push(ded>0 ? ded : '');
+      row.push(net);
+      row.push(''); // подпись
+      rows.push(row);
+    });
+
+    // Day totals row
+    var totRow=['ИТОГО ЗА ДЕНЬ',''];
+    dates.forEach(function(dt,i){ totRow.push(colTotals[i]>0?colTotals[i]:''); });
+    totRow.push(grandDed>0?grandDed:'');
+    totRow.push(grandEarned-grandDed);
+    totRow.push('');
+    rows.push(totRow);
+
     var ws=XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols']=[{wch:20},{wch:15},{wch:14},{wch:10},{wch:14},{wch:14},{wch:14},{wch:20},{wch:14},{wch:20}];
+
+    // Column widths
+    var cols=[{wch:22},{wch:16}];
+    dates.forEach(function(){ cols.push({wch:9}); });
+    cols.push({wch:12},{wch:14},{wch:18});
+    ws['!cols']=cols;
+
+    // STYLES via cell properties
+    var range=XLSX.utils.decode_range(ws['!ref']);
+    var netCol=dates.length+2; // 0=ФИО,1=Должность, then dates, then удерж, then нетто
+
+    for(var R=range.s.r; R<=range.e.r; R++){
+      for(var C=range.s.c; C<=range.e.c; C++){
+        var cellAddr=XLSX.utils.encode_cell({r:R,c:C});
+        if(!ws[cellAddr]) ws[cellAddr]={v:'',t:'s'};
+        var cell=ws[cellAddr];
+
+        // All cells get border
+        cell.s={
+          border:{
+            top:{style:'thin',color:{rgb:'CCCCCC'}},
+            bottom:{style:'thin',color:{rgb:'CCCCCC'}},
+            left:{style:'thin',color:{rgb:'CCCCCC'}},
+            right:{style:'thin',color:{rgb:'CCCCCC'}}
+          },
+          alignment:{horizontal:'center',vertical:'center'}
+        };
+
+        // Header row style
+        if(R===0){
+          cell.s.fill={fgColor:{rgb:'1A2236'}};
+          cell.s.font={bold:true,color:{rgb:'FFFFFF'},sz:10};
+        }
+        // Role separator rows
+        else if(typeof cell.v==='string' && cell.v.indexOf('— ')===0){
+          cell.s.fill={fgColor:{rgb:'243044'}};
+          cell.s.font={bold:true,color:{rgb:'94A3B8'},sz:9,italic:true};
+          cell.s.alignment={horizontal:'left'};
+        }
+        // ИТОГО row (last row)
+        else if(R===range.e.r){
+          cell.s.fill={fgColor:{rgb:'111827'}};
+          cell.s.font={bold:true,color:{rgb:'F1F5F9'},sz:10};
+        }
+        // К ВЫПЛАТЕ column - big green
+        else if(C===netCol){
+          cell.s.font={bold:true,sz:12,color:{rgb:'10B981'}};
+          cell.s.fill={fgColor:{rgb:'0D2818'}};
+        }
+        // Name column left align
+        else if(C===0){
+          cell.s.alignment={horizontal:'left',vertical:'center'};
+          cell.s.font={bold:true,sz:10};
+        }
+      }
+    }
+
+    // Row heights
+    var rowH={};
+    rowH[0]={hpt:22}; // header
+    for(var r=1;r<rows.length;r++){
+      var rv=rows[r][0]||'';
+      if(typeof rv==='string' && rv.indexOf('— ')===0) rowH[r]={hpt:16};
+      else rowH[r]={hpt:20};
+    }
+    ws['!rows']=Object.keys(rowH).map(function(k){ return rowH[k]; });
+
+    // Page setup for A4 landscape
+    ws['!pageSetup']={
+      paperSize:9, // A4
+      orientation:'landscape',
+      fitToPage:true,
+      fitToWidth:1,
+      fitToHeight:0
+    };
+
     XLSX.utils.book_append_sheet(wb,ws,dname);
   });
-  var sum=[['Сотрудник','Отдел','Должность','Начислено','Удержано','К выплате','Подпись']];
-  D.staff.forEach(function(st){
-    var earned=sh.filter(function(s){return s.sid===st.id;}).reduce(function(a,s){return a+s.earned;},0);
-    var dedt=dd.filter(function(d){return d.sid===st.id;}).reduce(function(a,d){return a+d.amt;},0);
-    if(earned||dedt)sum.push([st.name,st.dept==='hall'?'Зал':'Кухня',st.role,earned,dedt,earned-dedt,'']);
-  });
-  var wsS=XLSX.utils.aoa_to_sheet(sum);
-  wsS['!cols']=[{wch:20},{wch:10},{wch:15},{wch:14},{wch:14},{wch:14},{wch:20}];
-  XLSX.utils.book_append_sheet(wb,wsS,'Сводка');
+
   XLSX.writeFile(wb,'Зарплата_Неделя'+wn+'_'+D.cfg.name+'.xlsx');
   notif('Excel скачан ✓');
 }
