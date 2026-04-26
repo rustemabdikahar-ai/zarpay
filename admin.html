@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZarPay Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0f1e;--s1:#111827;--s2:#1a2236;--s3:#243044;
+  --b1:rgba(255,255,255,0.07);--b2:rgba(255,255,255,0.13);
+  --acc:#3b82f6;--grn:#10b981;--red:#ef4444;--yel:#f59e0b;--pur:#8b5cf6;
+  --t1:#f1f5f9;--t2:#94a3b8;--t3:#64748b;--r:12px;--r2:8px;
+}
+body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-height:100vh;padding:32px}
+.header{display:flex;align-items:center;gap:16px;margin-bottom:32px}
+.logo{font-family:'Unbounded',sans-serif;font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo small{display:block;font-size:10px;color:var(--t3);-webkit-text-fill-color:var(--t3);font-family:'Manrope',sans-serif;font-weight:400}
+.badge{display:inline-flex;align-items:center;padding:4px 12px;border-radius:99px;font-size:11px;font-weight:600;background:rgba(239,68,68,.15);color:var(--red)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r2);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn:active{transform:scale(.97)}
+.btn-p{background:var(--acc);color:#fff}.btn-p:hover{background:#2563eb}
+.btn-s{background:var(--s2);color:var(--t2);border:1px solid var(--b2)}.btn-s:hover{background:var(--s3);color:var(--t1)}
+.btn-d{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}.btn-d:hover{background:rgba(239,68,68,.2)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.fi{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);color:var(--t1);font-family:'Manrope',sans-serif;font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s}
+.fi:focus{border-color:var(--acc)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+/* ADD FORM */
+.add-form{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:24px;margin-bottom:28px}
+.add-form h3{font-size:14px;font-weight:700;margin-bottom:16px}
+.form-row{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:12px;align-items:end}
+.fl{display:block;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+
+/* CLIENT CARDS */
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+.client-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:20px;transition:border-color .15s;position:relative}
+.client-card:hover{border-color:var(--acc)}
+.client-top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.client-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--pur));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;flex-shrink:0}
+.client-name{font-weight:700;font-size:15px}
+.client-id{font-size:11px;color:var(--t3);margin-top:2px;font-family:monospace}
+.client-link{background:var(--s2);border-radius:var(--r2);padding:8px 12px;font-size:11px;color:var(--acc);word-break:break-all;margin-bottom:12px;cursor:pointer;border:1px solid var(--b1);transition:border-color .15s}
+.client-link:hover{border-color:var(--acc)}
+.client-actions{display:flex;gap:8px;flex-wrap:wrap}
+.client-note{font-size:12px;color:var(--t3);margin-top:12px;padding-top:12px;border-top:1px solid var(--b1)}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--grn);display:inline-block;margin-right:4px}
+
+/* EMPTY */
+.empty{text-align:center;padding:60px 20px;color:var(--t3)}
+.empty-icon{font-size:48px;margin-bottom:16px}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center}
+.ov.on{display:flex}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:18px;padding:28px;width:480px;max-width:95vw;animation:sup .22s ease}
+@keyframes sup{from{transform:translateY(16px);opacity:0}}
+.mt{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;margin-bottom:20px}
+.fg{margin-bottom:14px}
+.ma{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+.notif{position:fixed;bottom:20px;right:20px;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);padding:12px 18px;font-size:13px;font-weight:500;z-index:9000;animation:sup .25s ease}
+.notif.ok{border-color:rgba(16,185,129,.35)}
+.notif.er{border-color:rgba(239,68,68,.35)}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="logo">ZarPay <small>Панель управления клиентами</small></div>
+  </div>
+  <div style="margin-left:auto" class="row">
+    <span id="clientCount" style="font-size:13px;color:var(--t3)">0 заведений</span>
+    <button class="btn btn-p" onclick="showAdd()">+ Добавить заведение</button>
+  </div>
+</div>
+
+<!-- ADD FORM -->
+<div class="add-form" id="addForm" style="display:none">
+  <h3>➕ Новое заведение</h3>
+  <div class="form-row">
+    <div>
+      <label class="fl">Название</label>
+      <input class="fi" id="newName" placeholder="Канны, Нурмахан Кафе..." style="width:100%">
+    </div>
+    <div>
+      <label class="fl">ID (латиница)</label>
+      <input class="fi" id="newId" placeholder="kanny, nurmakhan..." style="width:100%">
+    </div>
+    <div>
+      <label class="fl">Заметка (необязательно)</label>
+      <input class="fi" id="newNote" placeholder="Контакт, адрес, телефон..." style="width:100%">
+    </div>
+    <div>
+      <button class="btn btn-p" onclick="addClient()" style="white-space:nowrap">Добавить</button>
+      <button class="btn btn-s" onclick="hideAdd()" style="margin-left:8px">Отмена</button>
+    </div>
+  </div>
+  <p style="font-size:11px;color:var(--t3);margin-top:12px">⚠ ID нельзя менять после создания — это ключ данных в Firebase</p>
+</div>
+
+<!-- CLIENTS GRID -->
+<div class="clients-grid" id="clientsGrid"></div>
+
+<!-- EDIT MODAL -->
+<div class="ov" id="editModal">
+  <div class="modal">
+    <div class="mt">✏️ Редактировать</div>
+    <input type="hidden" id="editIdx">
+    <div class="fg"><label class="fl">Название</label><input class="fi" id="editName" style="width:100%"></div>
+    <div class="fg"><label class="fl">ID (нельзя менять)</label><input class="fi" id="editIdShow" style="width:100%;opacity:.5" readonly></div>
+    <div class="fg"><label class="fl">Заметка</label><input class="fi" id="editNote" style="width:100%" placeholder="Контакт, адрес, телефон..."></div>
+    <div class="ma">
+      <button class="btn btn-s" onclick="closeEdit()">Отмена</button>
+      <button class="btn btn-p" onclick="saveEdit()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var BASE_URL = window.location.origin + window.location.pathname.replace('admin.html','') + 'index.html';
+// Try to get firebase config from localStorage
+var FB_CFG = null;
+try{ var raw=localStorage.getItem('zp_fb_cfg'); if(raw) FB_CFG=JSON.parse(raw); }catch(e){}
+
+var clients = [];
+
+function load(){
+  var raw = localStorage.getItem('zarpay_admin_clients');
+  if(raw){ try{ clients=JSON.parse(raw); }catch(e){ clients=[]; } }
+}
+function save(){
+  localStorage.setItem('zarpay_admin_clients', JSON.stringify(clients));
+}
+
+function render(){
+  var grid = document.getElementById('clientsGrid');
+  document.getElementById('clientCount').textContent = clients.length + ' заведений';
+
+  if(!clients.length){
+    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div class="empty-icon">🏢</div><p>Нет заведений. Добавьте первое!</p></div>';
+    return;
+  }
+
+  var html = '';
+  clients.forEach(function(c, i){
+    var link = buildLink(c.id);
+    var initials = c.name.charAt(0).toUpperCase();
+    html += '<div class="client-card">'+
+      '<div class="client-top">'+
+        '<div class="client-avatar">'+initials+'</div>'+
+        '<div>'+
+          '<div class="client-name">'+c.name+'</div>'+
+          '<div class="client-id">ID: '+c.id+'</div>'+
+        '</div>'+
+        '<div style="margin-left:auto"><span class="status-dot"></span><span style="font-size:11px;color:var(--t3)">активен</span></div>'+
+      '</div>'+
+      '<div class="client-link" onclick="copyLink(\''+c.id+'\')" title="Нажмите чтобы скопировать">'+
+        '📋 '+link.slice(0,60)+(link.length>60?'...':'')+
+      '</div>'+
+      '<div class="client-actions">'+
+        '<button class="btn btn-p btn-sm" onclick="openClient(\''+c.id+'\')">🔗 Открыть</button>'+
+        '<button class="btn btn-s btn-sm" onclick="copyLink(\''+c.id+'\')">📋 Скопировать ссылку</button>'+
+        '<button class="btn btn-s btn-sm" onclick="openEdit('+i+')">✏️</button>'+
+        '<button class="btn btn-d btn-sm" onclick="deleteClient('+i+')">✕</button>'+
+      '</div>'+
+      (c.note ? '<div class="client-note">📝 '+c.note+'</div>' : '')+
+    '</div>';
+  });
+  grid.innerHTML = html;
+}
+
+function buildLink(id){
+  var link = BASE_URL + '?id=' + id;
+  if(FB_CFG){
+    link += '&fbUrl='+encodeURIComponent(FB_CFG.url);
+    link += '&fbKey='+encodeURIComponent(FB_CFG.key);
+    link += '&fbPrj='+encodeURIComponent(FB_CFG.project);
+  }
+  return link;
+}
+
+function showAdd(){ document.getElementById('addForm').style.display='block'; document.getElementById('newName').focus(); }
+function hideAdd(){ document.getElementById('addForm').style.display='none'; ['newName','newId','newNote'].forEach(function(id){document.getElementById(id).value='';}); }
+
+// Auto-generate ID from name
+document.getElementById('newName').addEventListener('input', function(){
+  var val = this.value.toLowerCase()
+    .replace(/\s+/g,'-')
+    .replace(/[^a-z0-9\-]/g,'')
+    .slice(0,20);
+  document.getElementById('newId').value = val;
+});
+
+function addClient(){
+  var name = document.getElementById('newName').value.trim();
+  var id = document.getElementById('newId').value.trim().replace(/[^a-zA-Z0-9_-]/g,'');
+  var note = document.getElementById('newNote').value.trim();
+  if(!name){ notif('Введите название','er'); return; }
+  if(!id){ notif('Введите ID','er'); return; }
+  if(clients.find(function(c){ return c.id===id; })){ notif('Такой ID уже есть!','er'); return; }
+  clients.push({ id:id, name:name, note:note, createdAt: new Date().toLocaleDateString('ru-RU') });
+  save(); hideAdd(); render();
+  notif('Заведение добавлено ✓');
+}
+
+function openClient(id){
+  window.open(buildLink(id), '_blank');
+}
+
+function copyLink(id){
+  var link = buildLink(id);
+  if(navigator.clipboard){ navigator.clipboard.writeText(link).then(function(){ notif('Ссылка скопирована ✓'); }); }
+  else { var ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); notif('Ссылка скопирована ✓'); }
+}
+
+function openEdit(i){
+  var c = clients[i];
+  document.getElementById('editIdx').value = i;
+  document.getElementById('editName').value = c.name;
+  document.getElementById('editIdShow').value = c.id;
+  document.getElementById('editNote').value = c.note||'';
+  document.getElementById('editModal').classList.add('on');
+}
+function closeEdit(){ document.getElementById('editModal').classList.remove('on'); }
+function saveEdit(){
+  var i = parseInt(document.getElementById('editIdx').value);
+  clients[i].name = document.getElementById('editName').value.trim();
+  clients[i].note = document.getElementById('editNote').value.trim();
+  save(); closeEdit(); render(); notif('Обновлено ✓');
+}
+
+function deleteClient(i){
+  if(!confirm('Удалить заведение "'+clients[i].name+'" из списка?\n(Данные в Firebase не удаляются)')) return;
+  clients.splice(i,1);
+  save(); render(); notif('Удалено');
+}
+
+function notif(msg,type){
+  var n=document.createElement('div');
+  n.className='notif '+(type||'ok');
+  n.textContent=(type==='er'?'⚠ ':'✓ ')+msg;
+  document.body.appendChild(n);
+  setTimeout(function(){n.style.opacity='0';n.style.transition='opacity .4s';},2500);
+  setTimeout(function(){if(n.parentNode)n.parentNode.removeChild(n);},3000);
+}
+
+document.getElementById('editModal').addEventListener('click',function(e){ if(e.target===this) closeEdit(); });
+
+load();
+render();
+
+// Show Firebase status
+if(FB_CFG){
+  document.querySelector('.header').insertAdjacentHTML('beforeend',
+    '<div style="font-size:11px;color:var(--grn);display:flex;align-items:center;gap:6px">'+
+    '<span style="width:8px;height:8px;border-radius:50%;background:var(--grn);display:inline-block"></span>'+
+    'Firebase: '+FB_CFG.project+'</div>'
+  );
+} else {
+  document.querySelector('.header').insertAdjacentHTML('beforeend',
+    '<div style="font-size:11px;color:var(--yel)">⚠ Firebase не настроен — ссылки без синхронизации</div>'
+  );
+}
+</script>
+</body>
+</html>
