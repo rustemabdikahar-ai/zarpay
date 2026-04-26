@@ -1493,18 +1493,57 @@ function pp(v){
 function updDots(){
   for(var i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on', i < _pin.length);
 }
+function pinWrong(){
+  document.getElementById('pinErr').textContent = 'Неверный PIN';
+  _pin = ''; updDots();
+  setTimeout(function(){ document.getElementById('pinErr').textContent=''; }, 1800);
+}
+function pinSuccess(){
+  document.getElementById('pinScreen').classList.add('hidden');
+  load(); winfo(); initApp();
+}
 function checkPin(){
+  // Check local PIN first
   var stored = localStorage.getItem(STORE_KEY);
-  var pin = '1234';
-  if(stored){ try{ var p=JSON.parse(stored); pin = (p.cfg && p.cfg.pin) || '1234'; }catch(e){} }
-  if(_pin === pin){
-    document.getElementById('pinScreen').classList.add('hidden');
-    load(); winfo(); initApp();
-  } else {
-    document.getElementById('pinErr').textContent = 'Неверный PIN';
-    _pin = ''; updDots();
-    setTimeout(function(){ document.getElementById('pinErr').textContent=''; }, 1800);
-  }
+  var localPin = '1234';
+  if(stored){ try{ var p=JSON.parse(stored); localPin = (p.cfg && p.cfg.pin) || '1234'; }catch(e){} }
+  if(_pin === localPin){ pinSuccess(); return; }
+
+  // Local PIN wrong - this might be a new device
+  // Try to get real PIN from Firebase
+  document.getElementById('pinErr').textContent = 'Проверяем...';
+  var enteredPin = _pin;
+  _pin = '';
+
+  try {
+    var fbCfgRaw = localStorage.getItem('zp_fb_cfg');
+    var fbCfg = fbCfgRaw ? JSON.parse(fbCfgRaw) : null;
+    if(!fbCfg || !fbCfg.url){ pinWrong(); return; }
+
+    // Use existing Firebase connection if available
+    if(fbConnected && fbRef){
+      fbRef.child('cfg/pin').once('value').then(function(snap){
+        var fbPin = snap.val() || '1234';
+        if(enteredPin === fbPin){ pinSuccess(); }
+        else { pinWrong(); }
+      }).catch(function(){ pinWrong(); });
+    } else {
+      // Create temp connection just to check PIN
+      var tmpName = 'tmp' + Date.now();
+      var tmpApp = firebase.initializeApp({
+        apiKey: fbCfg.key,
+        databaseURL: fbCfg.url,
+        projectId: fbCfg.project,
+        appId: '1:000000000000:web:zarpay000000000000'
+      }, tmpName);
+      firebase.database(tmpApp).ref('zarpay/'+CLIENT_ID+'/cfg/pin').once('value').then(function(snap){
+        var fbPin = snap.val() || '1234';
+        try{ tmpApp.delete(); }catch(e){}
+        if(enteredPin === fbPin){ pinSuccess(); }
+        else { pinWrong(); }
+      }).catch(function(){ try{ tmpApp.delete(); }catch(e){} pinWrong(); });
+    }
+  } catch(e){ pinWrong(); }
 }
 document.addEventListener('keydown', function(e){
   if(document.getElementById('pinScreen').classList.contains('hidden')) return;
