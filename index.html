@@ -1470,7 +1470,6 @@ function tryAutoConnectFirebase(){
   if(saved){
     try{
       var cfg = JSON.parse(saved);
-      // Fill in fields if settings page rendered
       var fu = document.getElementById('fbUrl');
       var fk = document.getElementById('fbKey');
       var fp = document.getElementById('fbProject');
@@ -1481,6 +1480,18 @@ function tryAutoConnectFirebase(){
     }catch(e){}
   }
 }
+
+// CRITICAL FIX: Connect Firebase IMMEDIATELY on page load
+// This runs before PIN screen so data is ready when user logs in
+(function(){
+  var saved = localStorage.getItem('zp_fb_cfg');
+  if(saved){
+    try{
+      var cfg = JSON.parse(saved);
+      initFirebase(cfg);
+    }catch(e){}
+  }
+})();
 
 function notif(msg,type){
   var n=document.createElement('div');
@@ -1518,20 +1529,11 @@ var _lsAvailable = (function(){
     key: 'AIzaSyCgAIqHPNED6KZcXRfXTNDf5Qw4xy1CPF8',
     project: 'zarpay-50ed2'
   };
-  // Always set hardcoded config - overrides anything else
   localStorage.setItem('zp_fb_cfg', JSON.stringify(HARDCODED_FB));
 
-  // Also check URL params for override (legacy support)
+  // Clean URL params if present
   var params = new URLSearchParams(window.location.search);
-  var fbUrl = params.get('fbUrl');
-  var fbKey = params.get('fbKey');
-  var fbPrj = params.get('fbPrj');
-  if(fbUrl && fbKey && fbPrj){
-    var cfg = {url: decodeURIComponent(fbUrl), key: decodeURIComponent(fbKey), project: decodeURIComponent(fbPrj)};
-    localStorage.setItem('zp_fb_cfg', JSON.stringify(cfg));
-  }
-  // Clean URL
-  if(window.location.search.indexOf('fbUrl') > -1){
+  if(params.get('fbUrl')){
     var cleanUrl = window.location.origin + window.location.pathname + '?id=' + CLIENT_ID;
     window.history.replaceState({}, '', cleanUrl);
   }
@@ -1595,7 +1597,7 @@ document.addEventListener('keydown', function(e){
 
 function initApp(){
   rdash();
-  tryAutoConnectFirebase();
+  // Firebase already connected before pin screen, just refresh UI
 }
 </script>
 </body>
