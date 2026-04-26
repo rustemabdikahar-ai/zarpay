@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZarPay Admin</title>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -67,6 +69,17 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-h
 </head>
 <body>
 
+<!-- ADMIN LOCK SCREEN -->
+<div id="adminLock" style="position:fixed;inset:0;background:#0a0f1e;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
+  <div style="font-family:'Unbounded',sans-serif;font-size:22px;font-weight:700;background:linear-gradient(135deg,#3b82f6,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent">ZarPay Admin</div>
+  <div style="font-size:13px;color:#64748b">Введите пароль администратора</div>
+  <input id="adminPinInput" type="password" placeholder="Пароль" style="background:#1a2236;border:1px solid rgba(255,255,255,0.13);border-radius:8px;color:#f1f5f9;font-family:'Manrope',sans-serif;font-size:16px;padding:12px 20px;outline:none;width:240px;text-align:center">
+  <button onclick="checkAdminPin()" style="background:#3b82f6;color:white;border:none;border-radius:8px;padding:10px 32px;font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;cursor:pointer">Войти</button>
+  <div id="adminPinError" style="color:#ef4444;font-size:13px;min-height:20px"></div>
+  <div style="font-size:11px;color:#64748b">По умолчанию: 0000</div>
+</div>
+
+<div id="adminContent" style="display:none">
 <div class="header">
   <div>
     <div class="logo">ZarPay <small>Панель управления клиентами</small></div>
@@ -120,6 +133,28 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-h
 </div>
 
 <script>
+// ===== ADMIN PASSWORD PROTECTION =====
+var ADMIN_PIN = '0000'; // Change this in code to set admin password
+var _adminUnlocked = sessionStorage.getItem('zp_admin_unlocked') === '1';
+
+function checkAdminPin() {
+  var entered = document.getElementById('adminPinInput').value.trim();
+  if (entered === ADMIN_PIN) {
+    sessionStorage.setItem('zp_admin_unlocked', '1');
+    document.getElementById('adminLock').style.display = 'none';
+    document.getElementById('adminContent').style.display = 'block';
+    load(); render();
+  } else {
+    document.getElementById('adminPinError').textContent = 'Неверный пароль';
+    setTimeout(function(){ document.getElementById('adminPinError').textContent = ''; }, 2000);
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  var lock = document.getElementById('adminLock');
+  if (lock && lock.style.display !== 'none' && e.key === 'Enter') checkAdminPin();
+});
+
 var BASE_URL = window.location.origin + window.location.pathname.replace('admin.html','') + 'index.html';
 // Try to get firebase config from localStorage
 // Hardcoded Firebase config - works on any device
@@ -131,6 +166,39 @@ var FB_CFG = {
 localStorage.setItem('zp_fb_cfg', JSON.stringify(FB_CFG));
 
 var clients = [];
+
+// Firebase hardcoded config
+var FB_INITIALIZED = false;
+var FB_DB = null;
+
+function initFB(){
+  if(FB_INITIALIZED) return;
+  try{
+    firebase.initializeApp({
+      apiKey: FB_CFG.key,
+      databaseURL: FB_CFG.url,
+      projectId: FB_CFG.project,
+      appId: '1:000000000000:web:zarpay000000000000'
+    });
+    FB_DB = firebase.database();
+    FB_INITIALIZED = true;
+  }catch(e){ console.log('FB init error:', e); }
+}
+
+function loadPin(clientId){
+  var el = document.getElementById('pin-val-'+clientId);
+  if(!el){ return; }
+  el.textContent = 'загрузка...';
+  try{
+    initFB();
+    FB_DB.ref('zarpay/'+clientId+'/cfg/pin').once('value').then(function(snap){
+      var pin = snap.val() || '1234';
+      el.textContent = pin;
+      el.style.color = '#f59e0b';
+      el.style.fontSize = '16px';
+    }).catch(function(){ el.textContent = 'ошибка'; });
+  }catch(e){ el.textContent = 'нет Firebase'; }
+}
 
 function load(){
   var raw = localStorage.getItem('zarpay_admin_clients');
@@ -165,6 +233,7 @@ function render(){
       '<div class="client-link" onclick="copyLink(\''+c.id+'\')" title="Нажмите чтобы скопировать">'+
         '📋 '+link.slice(0,60)+(link.length>60?'...':'')+
       '</div>'+
+      '<div id="pin-'+c.id+'" style="font-size:12px;color:var(--t3);margin-bottom:8px;padding:8px;background:var(--s2);border-radius:6px">🔐 PIN: <span style="color:var(--yel);font-weight:700" id="pin-val-'+c.id+'">нажмите чтобы узнать</span> <button class="btn btn-s btn-sm" style="margin-left:8px" onclick="loadPin(''+c.id+'')">👁</button></div>'+
       '<div class="client-actions">'+
         '<button class="btn btn-p btn-sm" onclick="openClient(\''+c.id+'\')">🔗 Открыть</button>'+
         '<button class="btn btn-s btn-sm" onclick="copyLink(\''+c.id+'\')">📋 Скопировать ссылку</button>'+
@@ -254,8 +323,12 @@ function notif(msg,type){
 
 document.getElementById('editModal').addEventListener('click',function(e){ if(e.target===this) closeEdit(); });
 
-load();
-render();
+// Check if already unlocked
+if (_adminUnlocked) {
+  document.getElementById('adminLock').style.display = 'none';
+  document.getElementById('adminContent').style.display = 'block';
+  load(); render();
+}
 
 // Show Firebase status
 if(FB_CFG){
@@ -270,5 +343,6 @@ if(FB_CFG){
   );
 }
 </script>
+</div><!-- /adminContent -->
 </body>
 </html>
