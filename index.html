@@ -248,12 +248,13 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
   <!-- WEEK -->
   <div class="page" id="p-week">
-    <div class="row" style="margin-bottom:18px">
-      <div class="tabs">
+    <div class="row" style="margin-bottom:18px;flex-wrap:wrap;gap:10px">
+      <div class="tabs" style="margin-bottom:0">
         <div class="tab on" onclick="setDT('all',this)">Все</div>
         <div class="tab" onclick="setDT('hall',this)">🍽️ Зал</div>
         <div class="tab" onclick="setDT('kitchen',this)">👨‍🍳 Кухня</div>
       </div>
+      <input class="fi" id="weekSearch" placeholder="🔍 Поиск по имени..." oninput="rweek()" style="max-width:220px">
       <div class="row" style="margin-left:auto">
         <button class="btn btn-s btn-sm" onclick="exportXL(D.week.num)">⬇️ Excel</button>
         <button class="btn btn-s btn-sm" onclick="openPrint()">🖨️ Печать</button>
@@ -267,6 +268,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <div class="page" id="p-staff">
     <div class="row" style="margin-bottom:18px">
       <button class="btn btn-p" onclick="showModal('mStaff')">+ Добавить сотрудника</button>
+      <input class="fi" id="staffSearch" placeholder="🔍 Поиск по имени..." oninput="rstaff()" style="max-width:240px;margin-left:8px">
       <div class="tabs" style="margin-bottom:0;margin-left:auto">
         <div class="tab on" onclick="setST('all',this)">Все</div>
         <div class="tab" onclick="setST('hall',this)">Зал</div>
@@ -667,7 +669,12 @@ function rweek(){
   var dnames={hall:'🍽️ Зал',kitchen:'👨‍🍳 Кухня'};
   var html='';
   depts.forEach(function(dept){
-    var stlist=D.staff.filter(function(s){return s.dept===dept&&s.act;});
+    var weekQ=(document.getElementById('weekSearch')?document.getElementById('weekSearch').value||'':'').toLowerCase();
+    var stlist=D.staff.filter(function(s){
+      if(s.dept!==dept||!s.act) return false;
+      if(!weekQ) return true;
+      return (s.name||'').toLowerCase().indexOf(weekQ)!==-1 || (s.role||'').toLowerCase().indexOf(weekQ)!==-1;
+    });
     stlist.sort(function(a,b){
       var wn2=D.week.num;
       var sh2=D.shifts.filter(function(s){return s.wn===wn2;});
@@ -753,7 +760,9 @@ function rstaff(){
   var wn=D.week.num;
   var sh=D.shifts.filter(function(s){return s.wn===wn;});
   var dd=D.deds.filter(function(d){return d.wn===wn;});
-  var list=sF==='all'?D.staff.slice():D.staff.filter(function(s){return s.dept===sF;});
+  var staffQ=(document.getElementById('staffSearch')?document.getElementById('staffSearch').value||'':'').toLowerCase();
+  var list=(sF==='all'?D.staff.slice():D.staff.filter(function(s){return s.dept===sF;}))
+    .filter(function(s){ return !staffQ || (s.name||'').toLowerCase().indexOf(staffQ)!==-1 || (s.role||'').toLowerCase().indexOf(staffQ)!==-1; });
 
   // Sort list
   list.sort(function(a,b){
