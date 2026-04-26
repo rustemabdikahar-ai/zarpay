@@ -274,7 +274,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
       </div>
     </div>
     <div class="tw"><table><thead><tr>
-      <th>ФИО</th><th>Отдел</th><th>Должность</th><th>Ставка/день</th><th>За неделю</th><th>Статус</th><th>Действия</th>
+      <th onclick="sortStaff('name')" style="cursor:pointer;user-select:none">ФИО <span id="sh-name">↕</span></th>
+      <th onclick="sortStaff('dept')" style="cursor:pointer;user-select:none">Отдел <span id="sh-dept">↕</span></th>
+      <th onclick="sortStaff('role')" style="cursor:pointer;user-select:none">Должность <span id="sh-role">↕</span></th>
+      <th onclick="sortStaff('rate')" style="cursor:pointer;user-select:none">Ставка/день <span id="sh-rate">↕</span></th>
+      <th onclick="sortStaff('earned')" style="cursor:pointer;user-select:none">За неделю <span id="sh-earned">↕</span></th>
+      <th>Статус</th><th>Действия</th>
     </tr></thead><tbody id="staffBody"></tbody></table></div>
   </div>
 
@@ -494,7 +499,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <script>
 var D={staff:[],shifts:[],deds:[],history:[],week:{start:td(),num:1},cfg:{name:'Мой ресторан'}};
-var dF='all',sF='all';
+var dF='all',sF='all',sortCol='name',sortDir=1;
 
 function td(){return new Date().toISOString().split('T')[0];}
 function yesterday(){var d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split('T')[0];}
@@ -723,7 +728,25 @@ function rstaff(){
   var wn=D.week.num;
   var sh=D.shifts.filter(function(s){return s.wn===wn;});
   var dd=D.deds.filter(function(d){return d.wn===wn;});
-  var list=sF==='all'?D.staff:D.staff.filter(function(s){return s.dept===sF;});
+  var list=sF==='all'?D.staff.slice():D.staff.filter(function(s){return s.dept===sF;});
+
+  // Sort list
+  list.sort(function(a,b){
+    var av, bv;
+    if(sortCol==='name'){ av=a.name||''; bv=b.name||''; return sortDir*av.localeCompare(bv,'ru'); }
+    if(sortCol==='dept'){ av=a.dept||''; bv=b.dept||''; return sortDir*av.localeCompare(bv,'ru'); }
+    if(sortCol==='role'){ av=a.role||''; bv=b.role||''; return sortDir*av.localeCompare(bv,'ru'); }
+    if(sortCol==='rate'){ return sortDir*(( a.rate||0)-(b.rate||0)); }
+    if(sortCol==='earned'){
+      var ae=sh.filter(function(s){return s.sid===a.id;}).reduce(function(x,s){return x+s.earned;},0)
+            -dd.filter(function(d){return d.sid===a.id;}).reduce(function(x,d){return x+d.amt;},0);
+      var be=sh.filter(function(s){return s.sid===b.id;}).reduce(function(x,s){return x+s.earned;},0)
+            -dd.filter(function(d){return d.sid===b.id;}).reduce(function(x,d){return x+d.amt;},0);
+      return sortDir*(ae-be);
+    }
+    return 0;
+  });
+
   var h='';
   list.forEach(function(st){
     var earned=sh.filter(function(s){return s.sid===st.id;}).reduce(function(a,s){return a+s.earned;},0);
@@ -742,6 +765,17 @@ function rstaff(){
   if(!h)h='<tr><td colspan="7"><div class="empty" style="padding:30px"><p>Нет сотрудников</p></div></td></tr>';
   document.getElementById('staffBody').innerHTML=h;
 }
+function sortStaff(col){
+  if(sortCol === col){ sortDir *= -1; }
+  else { sortCol = col; sortDir = 1; }
+  // Update header arrows
+  ['name','dept','role','rate','earned'].forEach(function(c){
+    var el = document.getElementById('sh-'+c);
+    if(el) el.textContent = c === sortCol ? (sortDir===1 ? '↑' : '↓') : '↕';
+  });
+  rstaff();
+}
+
 function setST(v,el){sF=v;document.querySelectorAll('#p-staff .tab').forEach(function(t){t.classList.remove('on');});el.classList.add('on');rstaff();}
 
 function rded(){
