@@ -1311,26 +1311,32 @@ function initFirebase(cfg){
 
     setSyncStatus('syncing');
 
-    // Flag to avoid echo (we pushed -> we received our own push -> we push again)
+    // Track if this device has local data
+    var _hasLocalData = (D.staff && D.staff.length > 0);
+    // Flag to skip our own echo (only after we pushed)
     var _fbIgnoreNext = false;
 
     fbRef.on('value', function(snapshot){
       setSyncStatus('online');
       var remoteData = snapshot.val();
 
+      // Firebase empty - push our local data
       if(!remoteData || !remoteData.staff || !remoteData.week){
-        // Firebase empty - upload local data once
-        _fbIgnoreNext = true;
-        fbRef.set(D);
+        if(_hasLocalData){
+          _fbIgnoreNext = true;
+          fbRef.set(D);
+        }
         return;
       }
 
-      if(_fbIgnoreNext){
+      // Skip our own echo only if we have local data
+      if(_fbIgnoreNext && _hasLocalData){
         _fbIgnoreNext = false;
         return;
       }
+      _fbIgnoreNext = false;
 
-      // Apply remote data to local
+      // Always apply remote data (especially important for new devices with no local data)
       D.staff   = remoteData.staff   || [];
       D.shifts  = remoteData.shifts  || [];
       D.deds    = remoteData.deds    || [];
@@ -1338,14 +1344,15 @@ function initFirebase(cfg){
       D.week    = remoteData.week    || D.week;
       if(remoteData.cfg) D.cfg = remoteData.cfg;
 
-      // Save backup locally
+      // Update local backup
       try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+      _hasLocalData = true;
 
-      // Refresh UI
+      // Refresh UI on current page
       winfo();
-      var activePage = document.querySelector('.page.on');
-      if(activePage){
-        var pid = activePage.id.replace('p-','');
+      var ap = document.querySelector('.page.on');
+      if(ap){
+        var pid = ap.id.replace('p-','');
         if(pid==='dash') rdash();
         else if(pid==='week') rweek();
         else if(pid==='staff') rstaff();
@@ -1493,57 +1500,20 @@ function pp(v){
 function updDots(){
   for(var i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('on', i < _pin.length);
 }
-function pinWrong(){
-  document.getElementById('pinErr').textContent = 'Неверный PIN';
-  _pin = ''; updDots();
-  setTimeout(function(){ document.getElementById('pinErr').textContent=''; }, 1800);
-}
-function pinSuccess(){
-  document.getElementById('pinScreen').classList.add('hidden');
-  load(); winfo(); initApp();
-}
 function checkPin(){
-  // Check local PIN first
   var stored = localStorage.getItem(STORE_KEY);
-  var localPin = '1234';
-  if(stored){ try{ var p=JSON.parse(stored); localPin = (p.cfg && p.cfg.pin) || '1234'; }catch(e){} }
-  if(_pin === localPin){ pinSuccess(); return; }
-
-  // Local PIN wrong - this might be a new device
-  // Try to get real PIN from Firebase
-  document.getElementById('pinErr').textContent = 'Проверяем...';
-  var enteredPin = _pin;
-  _pin = '';
-
-  try {
-    var fbCfgRaw = localStorage.getItem('zp_fb_cfg');
-    var fbCfg = fbCfgRaw ? JSON.parse(fbCfgRaw) : null;
-    if(!fbCfg || !fbCfg.url){ pinWrong(); return; }
-
-    // Use existing Firebase connection if available
-    if(fbConnected && fbRef){
-      fbRef.child('cfg/pin').once('value').then(function(snap){
-        var fbPin = snap.val() || '1234';
-        if(enteredPin === fbPin){ pinSuccess(); }
-        else { pinWrong(); }
-      }).catch(function(){ pinWrong(); });
-    } else {
-      // Create temp connection just to check PIN
-      var tmpName = 'tmp' + Date.now();
-      var tmpApp = firebase.initializeApp({
-        apiKey: fbCfg.key,
-        databaseURL: fbCfg.url,
-        projectId: fbCfg.project,
-        appId: '1:000000000000:web:zarpay000000000000'
-      }, tmpName);
-      firebase.database(tmpApp).ref('zarpay/'+CLIENT_ID+'/cfg/pin').once('value').then(function(snap){
-        var fbPin = snap.val() || '1234';
-        try{ tmpApp.delete(); }catch(e){}
-        if(enteredPin === fbPin){ pinSuccess(); }
-        else { pinWrong(); }
-      }).catch(function(){ try{ tmpApp.delete(); }catch(e){} pinWrong(); });
-    }
-  } catch(e){ pinWrong(); }
+  var pin = '1234'; // default for new devices
+  if(stored){
+    try{ var p=JSON.parse(stored); pin = (p.cfg && p.cfg.pin) || '1234'; }catch(e){}
+  }
+  if(_pin === pin){
+    document.getElementById('pinScreen').classList.add('hidden');
+    load(); winfo(); initApp();
+  } else {
+    document.getElementById('pinErr').textContent = 'Неверный PIN';
+    _pin = ''; updDots();
+    setTimeout(function(){ document.getElementById('pinErr').textContent=''; }, 1800);
+  }
 }
 document.addEventListener('keydown', function(e){
   if(document.getElementById('pinScreen').classList.contains('hidden')) return;
