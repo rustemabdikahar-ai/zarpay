@@ -668,12 +668,37 @@ function rweek(){
   var html='';
   depts.forEach(function(dept){
     var stlist=D.staff.filter(function(s){return s.dept===dept&&s.act;});
+    stlist.sort(function(a,b){
+      var wn2=D.week.num;
+      var sh2=D.shifts.filter(function(s){return s.wn===wn2;});
+      var dd2=D.deds.filter(function(d){return d.wn===wn2;});
+      if(wSortCol==='name') return wSortDir*(a.name||'').localeCompare(b.name||'','ru');
+      if(wSortCol==='role') return wSortDir*(a.role||'').localeCompare(b.role||'','ru');
+      if(wSortCol==='rate') return wSortDir*((a.rate||0)-(b.rate||0));
+      if(wSortCol==='earned'||wSortCol==='net'){
+        var ae=sh2.filter(function(s){return s.sid===a.id;}).reduce(function(x,s){return x+s.earned;},0);
+        var be=sh2.filter(function(s){return s.sid===b.id;}).reduce(function(x,s){return x+s.earned;},0);
+        if(wSortCol==='net'){
+          ae-=dd2.filter(function(d){return d.sid===a.id;}).reduce(function(x,d){return x+d.amt;},0);
+          be-=dd2.filter(function(d){return d.sid===b.id;}).reduce(function(x,d){return x+d.amt;},0);
+        }
+        return wSortDir*(ae-be);
+      }
+      return (a.name||'').localeCompare(b.name||'','ru');
+    });
     if(!stlist.length)return;
     html+='<div style="margin-bottom:28px"><div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+
       '<span style="width:10px;height:10px;border-radius:50%;background:'+(dept==='hall'?'#3b82f6':'#f59e0b')+';display:inline-block"></span>'+
       '<b style="font-size:14px">'+dnames[dept]+'</b></div>'+
       '<div class="tw"><table><thead><tr>'+
-      '<th>Сотрудник</th><th>Должность</th><th>Дата</th><th>Смена</th><th>Ставка</th><th>Начислено</th><th>Удержание</th><th>Итого</th><th>Заметка</th><th></th>'+
+      '<th onclick="sortWeek(\'name\')" style="cursor:pointer;user-select:none">Сотрудник '+(wSortCol==='name'?(wSortDir===1?'↑':'↓'):'↕')+'</th>'+
+      '<th onclick="sortWeek(\'role\')" style="cursor:pointer;user-select:none">Должность '+(wSortCol==='role'?(wSortDir===1?'↑':'↓'):'↕')+'</th>'+
+      '<th>Дата</th><th>Смена</th>'+
+      '<th onclick="sortWeek(\'rate\')" style="cursor:pointer;user-select:none">Ставка '+(wSortCol==='rate'?(wSortDir===1?'↑':'↓'):'↕')+'</th>'+
+      '<th onclick="sortWeek(\'earned\')" style="cursor:pointer;user-select:none">Начислено '+(wSortCol==='earned'?(wSortDir===1?'↑':'↓'):'↕')+'</th>'+
+      '<th>Удержание</th>'+
+      '<th onclick="sortWeek(\'net\')" style="cursor:pointer;user-select:none">Итого '+(wSortCol==='net'?(wSortDir===1?'↑':'↓'):'↕')+'</th>'+
+      '<th>Заметка</th><th></th>'+
       '</tr></thead><tbody>';
     stlist.forEach(function(st){
       var sth=sh.filter(function(s){return s.sid===st.id;});
