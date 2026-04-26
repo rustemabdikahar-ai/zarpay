@@ -499,7 +499,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 
 <script>
 var D={staff:[],shifts:[],deds:[],history:[],week:{start:td(),num:1},cfg:{name:'Мой ресторан'}};
-var dF='all',sF='all',sortCol='name',sortDir=1;
+var dF='all',sF='all',sortCol='name',sortDir=1,wSortCol='name',wSortDir=1;
 
 function td(){return new Date().toISOString().split('T')[0];}
 function yesterday(){var d=new Date();d.setDate(d.getDate()-1);return d.toISOString().split('T')[0];}
@@ -774,6 +774,12 @@ function sortStaff(col){
     if(el) el.textContent = c === sortCol ? (sortDir===1 ? '↑' : '↓') : '↕';
   });
   rstaff();
+}
+
+function sortWeek(col){
+  if(wSortCol===col){ wSortDir*=-1; }
+  else{ wSortCol=col; wSortDir=1; }
+  rweek();
 }
 
 function setST(v,el){sF=v;document.querySelectorAll('#p-staff .tab').forEach(function(t){t.classList.remove('on');});el.classList.add('on');rstaff();}
