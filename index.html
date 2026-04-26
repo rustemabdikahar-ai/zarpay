@@ -1280,15 +1280,22 @@ function initFirebase(cfg){
     // Cleanup existing app properly
     if(fbRef){ try{ fbRef.off(); }catch(e){} fbRef=null; }
     if(fbDb){ fbDb=null; }
-    // Delete existing firebase apps
+    // Delete existing firebase app - Safari compatible way
     try{
-      firebase.apps.forEach(function(app){ app.delete(); });
+      if(firebase.apps && firebase.apps.length > 0){
+        for(var i=0; i<firebase.apps.length; i++){
+          try{ firebase.apps[i].delete(); }catch(e){}
+        }
+      }
     }catch(e){}
+    // Also try named app delete
+    try{ firebase.app().delete(); }catch(e){}
 
     var firebaseConfig = {
       apiKey: cfg.key,
       databaseURL: cfg.url,
       projectId: cfg.project,
+      appId: '1:000000000000:web:zarpay000000000000'
     };
 
     fbApp = firebase.initializeApp(firebaseConfig);
@@ -1372,7 +1379,7 @@ function disconnectFirebase(){
 
 // Override save to also push to Firebase
 function save(){
-  try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+  try{ if(_lsAvailable) localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
   if(fbConnected && fbRef){
     setSyncStatus('syncing');
     if(typeof _fbIgnoreNext !== 'undefined') _fbIgnoreNext = true;
@@ -1425,6 +1432,12 @@ var CLIENT_ID = (function(){
   return id.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,30) || 'default';
 })();
 var STORE_KEY = 'zp2_' + CLIENT_ID;
+
+// Safari private mode fix - test localStorage availability
+var _lsAvailable = (function(){
+  try{ localStorage.setItem('_test','1'); localStorage.removeItem('_test'); return true; }
+  catch(e){ return false; }
+})();
 
 // Firebase config - hardcoded, works on any device automatically
 (function(){
