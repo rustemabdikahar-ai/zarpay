@@ -1304,28 +1304,50 @@ function initFirebase(cfg){
 
     setSyncStatus('syncing');
 
-    // Listen for remote changes
+    // Flag to avoid echo (we pushed -> we received our own push -> we push again)
+    var _fbIgnoreNext = false;
+
     fbRef.on('value', function(snapshot){
-      var remoteData = snapshot.val();
-      if(remoteData && remoteData.staff && remoteData.week){
-        // Valid remote data - merge carefully
-        D.staff = remoteData.staff || [];
-        D.shifts = remoteData.shifts || [];
-        D.deds = remoteData.deds || [];
-        D.history = remoteData.history || [];
-        D.week = remoteData.week || D.week;
-        D.cfg = remoteData.cfg || D.cfg;
-        save(); // backup locally
-        winfo();
-        rdash();
-      } else {
-        // Firebase is empty - push our local data up
-        fbRef.set(D);
-      }
       setSyncStatus('online');
+      var remoteData = snapshot.val();
+
+      if(!remoteData || !remoteData.staff || !remoteData.week){
+        // Firebase empty - upload local data once
+        _fbIgnoreNext = true;
+        fbRef.set(D);
+        return;
+      }
+
+      if(_fbIgnoreNext){
+        _fbIgnoreNext = false;
+        return;
+      }
+
+      // Apply remote data to local
+      D.staff   = remoteData.staff   || [];
+      D.shifts  = remoteData.shifts  || [];
+      D.deds    = remoteData.deds    || [];
+      D.history = remoteData.history || [];
+      D.week    = remoteData.week    || D.week;
+      if(remoteData.cfg) D.cfg = remoteData.cfg;
+
+      // Save backup locally
+      try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+
+      // Refresh UI
+      winfo();
+      var activePage = document.querySelector('.page.on');
+      if(activePage){
+        var pid = activePage.id.replace('p-','');
+        if(pid==='dash') rdash();
+        else if(pid==='week') rweek();
+        else if(pid==='staff') rstaff();
+        else if(pid==='ded') rded();
+        else if(pid==='hist') rhist();
+      }
     }, function(err){
       setSyncStatus('offline');
-      notif('Ошибка Firebase: ' + err.message, 'er');
+      notif('Ошибка синхронизации: ' + err.message, 'er');
     });
 
     var st = document.getElementById('fbStatus');
@@ -1349,15 +1371,16 @@ function disconnectFirebase(){
 }
 
 // Override save to also push to Firebase
-var _localSave = null;
 function save(){
   try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
   if(fbConnected && fbRef){
     setSyncStatus('syncing');
+    if(typeof _fbIgnoreNext !== 'undefined') _fbIgnoreNext = true;
     fbRef.set(D).then(function(){
       setSyncStatus('online');
     }).catch(function(err){
       setSyncStatus('offline');
+      if(typeof _fbIgnoreNext !== 'undefined') _fbIgnoreNext = false;
     });
   }
 }
