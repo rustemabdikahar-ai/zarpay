@@ -1426,8 +1426,17 @@ var CLIENT_ID = (function(){
 })();
 var STORE_KEY = 'zp2_' + CLIENT_ID;
 
-// Auto-load Firebase config from URL if present (для сотрудников)
+// Firebase config - hardcoded, works on any device automatically
 (function(){
+  var HARDCODED_FB = {
+    url: 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app',
+    key: 'AIzaSyCgAIqHPNED6KZcXRfXTNDf5Qw4xy1CPF8',
+    project: 'zarpay-50ed2'
+  };
+  // Always set hardcoded config - overrides anything else
+  localStorage.setItem('zp_fb_cfg', JSON.stringify(HARDCODED_FB));
+
+  // Also check URL params for override (legacy support)
   var params = new URLSearchParams(window.location.search);
   var fbUrl = params.get('fbUrl');
   var fbKey = params.get('fbKey');
@@ -1435,7 +1444,9 @@ var STORE_KEY = 'zp2_' + CLIENT_ID;
   if(fbUrl && fbKey && fbPrj){
     var cfg = {url: decodeURIComponent(fbUrl), key: decodeURIComponent(fbKey), project: decodeURIComponent(fbPrj)};
     localStorage.setItem('zp_fb_cfg', JSON.stringify(cfg));
-    // Clean URL without reloading (remove firebase params from address bar)
+  }
+  // Clean URL
+  if(window.location.search.indexOf('fbUrl') > -1){
     var cleanUrl = window.location.origin + window.location.pathname + '?id=' + CLIENT_ID;
     window.history.replaceState({}, '', cleanUrl);
   }

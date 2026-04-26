@@ -122,8 +122,13 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-h
 <script>
 var BASE_URL = window.location.origin + window.location.pathname.replace('admin.html','') + 'index.html';
 // Try to get firebase config from localStorage
-var FB_CFG = null;
-try{ var raw=localStorage.getItem('zp_fb_cfg'); if(raw) FB_CFG=JSON.parse(raw); }catch(e){}
+// Hardcoded Firebase config - works on any device
+var FB_CFG = {
+  url: 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app',
+  key: 'AIzaSyCgAIqHPNED6KZcXRfXTNDf5Qw4xy1CPF8',
+  project: 'zarpay-50ed2'
+};
+localStorage.setItem('zp_fb_cfg', JSON.stringify(FB_CFG));
 
 var clients = [];
 
