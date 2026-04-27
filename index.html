@@ -1404,8 +1404,8 @@ function initFirebase(cfg){
 
     // Track if this device has local data
     var _hasLocalData = (D.staff && D.staff.length > 0);
-    // Flag to skip our own echo (only after we pushed)
     var _fbIgnoreNext = false;
+    var _lastSaveTime = 0;
 
     fbRef.on('value', function(snapshot){
       setSyncStatus('online');
@@ -1415,17 +1415,17 @@ function initFirebase(cfg){
       if(!remoteData || !remoteData.staff || !remoteData.week){
         if(_hasLocalData){
           _fbIgnoreNext = true;
-          fbRef.set(D);
+          _lastSaveTime = Date.now();
+          fbRef.set(JSON.parse(JSON.stringify(D)));
         }
         return;
       }
 
-      // Skip our own echo only if we have local data
-      if(_fbIgnoreNext && _hasLocalData){
+      // Skip our own echo - ignore for 3 seconds after we saved
+      if(_fbIgnoreNext || (Date.now() - _lastSaveTime < 3000)){
         _fbIgnoreNext = false;
         return;
       }
-      _fbIgnoreNext = false;
 
       // Always apply remote data (especially important for new devices with no local data)
       D.staff   = remoteData.staff   || [];
@@ -1520,33 +1520,67 @@ function tryAutoConnectFirebase(){
 })();
 
 function forceSync(){
-  if(!fbConnected || !fbRef){
-    notif('Firebase не подключён','er');
-    return;
+  notif('Подключаемся к Firebase...');
+  
+  // Always try to init Firebase first
+  var cfg = null;
+  try{ cfg = JSON.parse(localStorage.getItem('zp_fb_cfg')); }catch(e){}
+  
+  if(!cfg){
+    // Use hardcoded config
+    cfg = {
+      url: 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app',
+      key: 'AIzaSyCgAIqHPNED6KZcXRfXTNDf5Qw4xy1CPF8',
+      project: 'zarpay-50ed2'
+    };
+    localStorage.setItem('zp_fb_cfg', JSON.stringify(cfg));
   }
-  notif('Загружаем из Firebase...');
-  // Clear local cache first
-  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
-  // Force read from Firebase
-  fbRef.once('value').then(function(snap){
-    var remoteData = snap.val();
-    if(remoteData && remoteData.staff && remoteData.week){
-      D.staff   = remoteData.staff   || [];
-      D.shifts  = remoteData.shifts  || [];
-      D.deds    = remoteData.deds    || [];
-      D.history = remoteData.history || [];
-      D.week    = remoteData.week    || D.week;
-      if(remoteData.cfg) D.cfg = remoteData.cfg;
-      try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
-      winfo();
-      rdash();
-      notif('Данные обновлены из Firebase ✓');
-    } else {
-      notif('Firebase пуст для этого заведения','er');
+
+  function doLoad(ref){
+    notif('Загружаем данные...');
+    try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+    ref.once('value').then(function(snap){
+      var rd = snap.val();
+      if(rd && (rd.staff || rd.week)){
+        D.staff   = rd.staff   || [];
+        D.shifts  = rd.shifts  || [];
+        D.deds    = rd.deds    || [];
+        D.history = rd.history || [];
+        D.week    = rd.week    || D.week;
+        if(rd.cfg) D.cfg = rd.cfg;
+        try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+        winfo(); rdash();
+        notif('✓ Данные загружены: ' + D.staff.length + ' сотр.');
+      } else {
+        // Firebase empty for this client - just clear local
+        D.staff=[]; D.shifts=[]; D.deds=[];
+        winfo(); rdash();
+        notif('Данные очищены (Firebase пуст для ' + CLIENT_ID + ')');
+      }
+    }).catch(function(e){ notif('Ошибка загрузки: ' + e.message,'er'); });
+  }
+
+  if(fbConnected && fbRef){
+    doLoad(fbRef);
+  } else {
+    // Not connected - init Firebase now
+    try{
+      var appName = 'forceSync_' + Date.now();
+      var tmpApp = firebase.initializeApp({
+        apiKey: cfg.key,
+        databaseURL: cfg.url,
+        projectId: cfg.project,
+        appId: '1:000000000000:web:zarpay000000000000'
+      }, appName);
+      var tmpDb = firebase.database(tmpApp);
+      var tmpRef = tmpDb.ref('zarpay/' + CLIENT_ID);
+      doLoad(tmpRef);
+      // Also try to establish permanent connection
+      setTimeout(function(){ tryAutoConnectFirebase(); }, 1000);
+    }catch(e){
+      notif('Ошибка Firebase: ' + e.message,'er');
     }
-  }).catch(function(e){
-    notif('Ошибка: ' + e.message,'er');
-  });
+  }
 }
 
 function notif(msg,type){
