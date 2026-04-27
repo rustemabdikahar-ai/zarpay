@@ -1520,68 +1520,55 @@ function tryAutoConnectFirebase(){
 })();
 
 function forceSync(){
-  notif('Подключаемся к Firebase...');
+  notif('Загружаем из Firebase...');
   
-  // Always try to init Firebase first
-  var cfg = null;
-  try{ cfg = JSON.parse(localStorage.getItem('zp_fb_cfg')); }catch(e){}
-  
-  if(!cfg){
-    // Use hardcoded config
-    cfg = {
-      url: 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app',
-      key: 'AIzaSyCgAIqHPNED6KZcXRfXTNDf5Qw4xy1CPF8',
-      project: 'zarpay-50ed2'
-    };
-    localStorage.setItem('zp_fb_cfg', JSON.stringify(cfg));
+  var FB_CFG_LOCAL = {
+    url: 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app',
+    key: 'AIzaSyCgAIqHPNED6KZcXRfXTNDf5Qw4xy1CPF8',
+    project: 'zarpay-50ed2'
+  };
+
+  function applyData(d){
+    if(!d){ notif('Firebase пуст для '+CLIENT_ID,'er'); return; }
+    D.staff   = d.staff   || [];
+    D.shifts  = d.shifts  || [];
+    D.deds    = d.deds    || [];
+    D.history = d.history || [];
+    if(d.week) D.week = d.week;
+    if(d.cfg)  D.cfg  = d.cfg;
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+    winfo(); rdash();
+    notif('✓ Загружено: '+D.staff.length+' сотр., '+D.shifts.length+' смен');
   }
 
-  function doLoad(ref){
-    notif('Загружаем данные...');
-    try{ localStorage.removeItem(STORE_KEY); }catch(e){}
-    ref.once('value').then(function(snap){
-      var rd = snap.val();
-      if(rd && (rd.staff || rd.week)){
-        D.staff   = rd.staff   || [];
-        D.shifts  = rd.shifts  || [];
-        D.deds    = rd.deds    || [];
-        D.history = rd.history || [];
-        D.week    = rd.week    || D.week;
-        if(rd.cfg) D.cfg = rd.cfg;
-        try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
-        winfo(); rdash();
-        notif('✓ Данные загружены: ' + D.staff.length + ' сотр.');
-      } else {
-        // Firebase empty for this client - just clear local
-        D.staff=[]; D.shifts=[]; D.deds=[];
-        winfo(); rdash();
-        notif('Данные очищены (Firebase пуст для ' + CLIENT_ID + ')');
-      }
-    }).catch(function(e){ notif('Ошибка загрузки: ' + e.message,'er'); });
-  }
-
+  // Use existing connection if available
   if(fbConnected && fbRef){
-    doLoad(fbRef);
-  } else {
-    // Not connected - init Firebase now
-    try{
-      var appName = 'forceSync_' + Date.now();
-      var tmpApp = firebase.initializeApp({
-        apiKey: cfg.key,
-        databaseURL: cfg.url,
-        projectId: cfg.project,
-        appId: '1:000000000000:web:zarpay000000000000'
-      }, appName);
-      var tmpDb = firebase.database(tmpApp);
-      var tmpRef = tmpDb.ref('zarpay/' + CLIENT_ID);
-      doLoad(tmpRef);
-      // Also try to establish permanent connection
-      setTimeout(function(){ tryAutoConnectFirebase(); }, 1000);
-    }catch(e){
-      notif('Ошибка Firebase: ' + e.message,'er');
-    }
+    fbRef.once('value').then(function(snap){ applyData(snap.val()); })
+    .catch(function(e){ notif('Ошибка: '+e.message,'er'); });
+    return;
   }
+
+  // No connection — create temp one
+  try{
+    var tmpName = 'tmp'+Date.now();
+    var tmpApp = firebase.initializeApp({
+      apiKey: FB_CFG_LOCAL.key,
+      databaseURL: FB_CFG_LOCAL.url,
+      projectId: FB_CFG_LOCAL.project,
+      appId: '1:000000000000:web:zarpay'
+    }, tmpName);
+    firebase.database(tmpApp).ref('zarpay/'+CLIENT_ID).once('value')
+    .then(function(snap){
+      applyData(snap.val());
+      try{ tmpApp.delete(); }catch(e){}
+    })
+    .catch(function(e){
+      try{ tmpApp.delete(); }catch(e2){}
+      notif('Ошибка: '+e.message,'er');
+    });
+  }catch(e){ notif('Firebase ошибка: '+e.message,'er'); }
 }
+
 
 function notif(msg,type){
   var n=document.createElement('div');
