@@ -564,6 +564,8 @@ function winfo(){
   var e=wEnd(D.week.start);
   document.getElementById('swDates').textContent=fds(D.week.start)+' – '+fds(e);
   document.getElementById('swNum').textContent='Неделя №'+D.week.num;
+  // Show real sync status
+  if(!fbConnected) setSyncStatus('offline');
 }
 
 function rdash(){
@@ -1331,9 +1333,19 @@ function setSyncStatus(status){
   var bar = document.getElementById('syncBar');
   if(!dot) return;
   dot.className = 'sync-dot ' + status;
-  if(status === 'online'){ txt.textContent = 'Синхронизировано'; bar.classList.remove('active'); }
-  else if(status === 'syncing'){ txt.textContent = 'Синхронизация...'; bar.classList.add('active'); }
-  else if(status === 'offline'){ txt.textContent = 'Локально'; bar.classList.remove('active'); }
+  if(status === 'online'){
+    txt.textContent = 'Синхронизировано';
+    txt.style.color = 'var(--grn)';
+    bar.classList.remove('active');
+  } else if(status === 'syncing'){
+    txt.textContent = 'Отправка...';
+    txt.style.color = 'var(--acc)';
+    bar.classList.add('active');
+  } else if(status === 'offline'){
+    txt.textContent = '⚠ Не синхронизировано';
+    txt.style.color = 'var(--red)';
+    bar.classList.remove('active');
+  }
 }
 
 function connectFirebase(){
