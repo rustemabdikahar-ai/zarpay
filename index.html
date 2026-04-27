@@ -365,6 +365,11 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <p style="font-size:11px;color:var(--t3);margin-top:6px">Ссылка для сотрудника содержит настройки Firebase — открыв её, всё подключится автоматически</p>
     </div>
     <div class="sc2">
+      <b style="font-size:14px">🔄 Принудительная синхронизация</b>
+      <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">Очистить локальный кэш и загрузить свежие данные из облака. Используй если данные не обновляются.</p>
+      <button class="btn btn-p" onclick="forceSync()">🔄 Загрузить из Firebase</button>
+    </div>
+    <div class="sc2">
       <b style="font-size:14px">🗑️ Удалить все данные</b>
       <p style="font-size:12px;color:var(--t3);margin:6px 0 12px">Необратимое действие</p>
       <button class="btn btn-d" onclick="if(confirm('Удалить ВСЁ?')){localStorage.removeItem(STORE_KEY);location.reload()}">Удалить все данные</button>
@@ -1513,6 +1518,36 @@ function tryAutoConnectFirebase(){
     }catch(e){}
   }
 })();
+
+function forceSync(){
+  if(!fbConnected || !fbRef){
+    notif('Firebase не подключён','er');
+    return;
+  }
+  notif('Загружаем из Firebase...');
+  // Clear local cache first
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  // Force read from Firebase
+  fbRef.once('value').then(function(snap){
+    var remoteData = snap.val();
+    if(remoteData && remoteData.staff && remoteData.week){
+      D.staff   = remoteData.staff   || [];
+      D.shifts  = remoteData.shifts  || [];
+      D.deds    = remoteData.deds    || [];
+      D.history = remoteData.history || [];
+      D.week    = remoteData.week    || D.week;
+      if(remoteData.cfg) D.cfg = remoteData.cfg;
+      try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+      winfo();
+      rdash();
+      notif('Данные обновлены из Firebase ✓');
+    } else {
+      notif('Firebase пуст для этого заведения','er');
+    }
+  }).catch(function(e){
+    notif('Ошибка: ' + e.message,'er');
+  });
+}
 
 function notif(msg,type){
   var n=document.createElement('div');
