@@ -517,13 +517,8 @@ function wEnd(s){var d=new Date(s+'T12:00:00');d.setDate(d.getDate()+6);return d
 function g(id){return document.getElementById(id).value;}
 function byId(id){return D.staff.find(function(s){return s.id===id;});}
 
-function save(){try{localStorage.setItem('zp2',JSON.stringify(D));}catch(e){}}
-function load(){
-  try{var r=localStorage.getItem('zp2');if(r)D=JSON.parse(r);}catch(e){}
-  if(!D.week)D.week={start:td(),num:1};
-  if(!D.cfg)D.cfg={name:'Мой ресторан'};
-  if(!D.history)D.history=[];
-}
+// save() defined below with Firebase REST sync
+// load() defined below
 
 var pages={dash:'Сводка',week:'Текущая неделя',staff:'Сотрудники',ded:'Удержания',hist:'История',set:'Настройки'};
 function go(p){
@@ -1572,7 +1567,7 @@ var _lsAvailable = (function(){
 })();
 
 // Override save/load to use client-specific key
-function save(){try{localStorage.setItem(STORE_KEY,JSON.stringify(D));}catch(e){}}
+// save() already defined above with Firebase REST
 function load(){
   try{var r=localStorage.getItem(STORE_KEY);if(r)D=JSON.parse(r);}catch(e){}
   if(!D.week)D.week={start:td(),num:1};

@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZarPay Admin</title>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -19,65 +17,73 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-h
 
 /* LOCK */
 #lockScreen{position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px}
-.lock-logo{font-family:'Unbounded',sans-serif;font-size:22px;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.lock-logo{font-family:'Unbounded',sans-serif;font-size:24px;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .lock-sub{font-size:13px;color:var(--t3)}
-.lock-input{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);color:var(--t1);font-family:'Manrope',sans-serif;font-size:18px;padding:12px 24px;outline:none;width:220px;text-align:center;letter-spacing:4px;transition:border-color .15s}
+.lock-input{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);color:var(--t1);font-family:'Manrope',sans-serif;font-size:20px;padding:12px 24px;outline:none;width:200px;text-align:center;letter-spacing:6px}
 .lock-input:focus{border-color:var(--acc)}
-.lock-btn{background:var(--acc);color:white;border:none;border-radius:var(--r2);padding:11px 36px;font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s}
-.lock-btn:hover{background:#2563eb}
-.lock-btn:active{transform:scale(.97)}
+.lock-btn{background:var(--acc);color:white;border:none;border-radius:var(--r2);padding:11px 36px;font-family:'Manrope',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
 .lock-err{color:var(--red);font-size:13px;min-height:20px}
 .lock-hint{font-size:11px;color:var(--t3)}
 
 /* MAIN */
-#appContent{display:none;padding:32px}
-.header{display:flex;align-items:center;gap:16px;margin-bottom:32px;flex-wrap:wrap}
-.logo{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#appContent{display:none;padding:28px}
+.header{display:flex;align-items:center;gap:16px;margin-bottom:28px;flex-wrap:wrap}
+.logo{font-family:'Unbounded',sans-serif;font-size:18px;font-weight:700;background:linear-gradient(135deg,var(--acc),var(--pur));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .logo small{display:block;font-size:10px;color:var(--t3);-webkit-text-fill-color:var(--t3);font-family:'Manrope',sans-serif;font-weight:400}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r2);font-family:'Manrope',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
 .btn:active{transform:scale(.97)}
-.btn-p{background:var(--acc);color:#fff}.btn-p:hover{background:#2563eb}
-.btn-s{background:var(--s2);color:var(--t2);border:1px solid var(--b2)}.btn-s:hover{background:var(--s3);color:var(--t1)}
+.btn-p{background:var(--acc);color:#fff}
+.btn-s{background:var(--s2);color:var(--t2);border:1px solid var(--b2)}
+.btn-s:hover{background:var(--s3);color:var(--t1)}
 .btn-d{background:rgba(239,68,68,.12);color:var(--red);border:1px solid rgba(239,68,68,.2)}
 .btn-sm{padding:5px 10px;font-size:12px}
-.fi{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);color:var(--t1);font-family:'Manrope',sans-serif;font-size:13px;padding:9px 12px;outline:none;transition:border-color .15s;width:100%}
+.fi{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);color:var(--t1);font-family:'Manrope',sans-serif;font-size:13px;padding:9px 12px;outline:none;width:100%}
 .fi:focus{border-color:var(--acc)}
-.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 
-.add-form{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:24px;margin-bottom:28px}
-.add-form h3{font-size:14px;font-weight:700;margin-bottom:16px}
+.add-form{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:24px;margin-bottom:24px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr 2fr auto;gap:12px;align-items:end}
 .fl{display:block;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
 
 .clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
-.client-card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:20px;transition:border-color .15s}
-.client-card:hover{border-color:var(--b2)}
-.client-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
-.client-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--pur));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;flex-shrink:0}
-.client-name{font-weight:700;font-size:15px}
-.client-id{font-size:11px;color:var(--t3);font-family:monospace;margin-top:2px}
-.client-link{background:var(--s2);border-radius:var(--r2);padding:8px 12px;font-size:11px;color:var(--acc);word-break:break-all;margin-bottom:10px;cursor:pointer;border:1px solid var(--b1);transition:border-color .15s}
-.client-link:hover{border-color:var(--acc)}
+.card{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:20px;transition:border-color .15s}
+.card:hover{border-color:var(--b2)}
+.card-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--pur));display:flex;align-items:center;justify-content:center;font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;flex-shrink:0}
+.card-name{font-weight:700;font-size:15px}
+.card-id{font-size:11px;color:var(--t3);font-family:monospace;margin-top:2px}
+.card-link{background:var(--s2);border-radius:var(--r2);padding:8px 12px;font-size:11px;color:var(--acc);word-break:break-all;margin-bottom:10px;cursor:pointer;border:1px solid var(--b1)}
+.card-link:hover{border-color:var(--acc)}
+
+/* Sync info row */
+.sync-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:var(--r2);margin-bottom:10px;font-size:12px;flex-wrap:wrap}
+.sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sync-dot.ok{background:var(--grn)}
+.sync-dot.old{background:var(--yel)}
+.sync-dot.never{background:var(--t3)}
+.sync-time{color:var(--t2)}
+.sync-stats{color:var(--t3);margin-left:auto}
+
+/* Pin row */
 .pin-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:var(--r2);margin-bottom:10px;font-size:12px}
-.pin-val{font-size:15px;font-weight:700;color:var(--yel);font-family:'Unbounded',sans-serif;min-width:50px}
-.client-note{font-size:12px;color:var(--t3);margin-top:10px;padding-top:10px;border-top:1px solid var(--b1)}
-.empty{text-align:center;padding:60px 20px;color:var(--t3)}
+.pin-val{font-size:16px;font-weight:700;color:var(--yel);font-family:'Unbounded',sans-serif;min-width:60px;letter-spacing:2px}
+.card-actions{display:flex;gap:8px;flex-wrap:wrap}
+.card-note{font-size:12px;color:var(--t3);margin-top:10px;padding-top:10px;border-top:1px solid var(--b1)}
+.empty{text-align:center;padding:60px 20px;color:var(--t3);grid-column:1/-1}
 
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:500;display:none;align-items:center;justify-content:center}
 .ov.on{display:flex}
-.modal{background:var(--s1);border:1px solid var(--b2);border-radius:18px;padding:28px;width:460px;max-width:95vw;animation:sup .22s ease}
-@keyframes sup{from{transform:translateY(16px);opacity:0}}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:18px;padding:28px;width:460px;max-width:95vw}
 .mt{font-family:'Unbounded',sans-serif;font-size:16px;font-weight:700;margin-bottom:20px}
 .fg{margin-bottom:14px}
 .ma{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
-.notif{position:fixed;bottom:20px;right:20px;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);padding:12px 18px;font-size:13px;font-weight:500;z-index:9000;animation:sup .25s ease}
+.notif{position:fixed;bottom:20px;right:20px;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);padding:12px 18px;font-size:13px;font-weight:500;z-index:9000}
 .notif.ok{border-color:rgba(16,185,129,.35)}
 .notif.er{border-color:rgba(239,68,68,.35)}
 </style>
 </head>
 <body>
 
-<!-- LOCK SCREEN -->
+<!-- LOCK -->
 <div id="lockScreen">
   <div class="lock-logo">ZarPay</div>
   <div class="lock-sub">Панель администратора</div>
@@ -89,30 +95,28 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-h
 
 <!-- APP -->
 <div id="appContent">
-
   <div class="header">
-    <div class="logo">ZarPay <small>Панель управления клиентами</small></div>
-    <div style="margin-left:auto" class="row">
+    <div class="logo">ZarPay <small>Управление клиентами</small></div>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <span id="fbStatus" style="font-size:11px;color:var(--t3)">Подключение...</span>
       <span id="clientCount" style="font-size:13px;color:var(--t3)"></span>
-      <span id="fbStatus" style="font-size:11px"></span>
+      <button class="btn btn-s btn-sm" id="refreshAllBtn">🔄 Обновить все</button>
       <button class="btn btn-s btn-sm" id="logoutBtn">Выйти</button>
-      <button class="btn btn-p" id="addBtn">+ Добавить заведение</button>
+      <button class="btn btn-p" id="addBtn">+ Добавить</button>
     </div>
   </div>
 
-  <!-- ADD FORM -->
   <div class="add-form" id="addForm" style="display:none">
-    <h3>➕ Новое заведение</h3>
+    <b style="font-size:14px;display:block;margin-bottom:16px">➕ Новое заведение</b>
     <div class="form-grid">
-      <div><label class="fl">Название</label><input class="fi" id="newName" placeholder="Канны, Нурмахан..."></div>
+      <div><label class="fl">Название</label><input class="fi" id="newName" placeholder="Канны..."></div>
       <div><label class="fl">ID (латиница)</label><input class="fi" id="newId" placeholder="kanny..."></div>
       <div><label class="fl">Заметка</label><input class="fi" id="newNote" placeholder="Контакт, адрес..."></div>
-      <div class="row">
+      <div style="display:flex;gap:8px">
         <button class="btn btn-p btn-sm" id="addSubmitBtn">Добавить</button>
-        <button class="btn btn-s btn-sm" id="addCancelBtn">Отмена</button>
+        <button class="btn btn-s btn-sm" id="addCancelBtn">✕</button>
       </div>
     </div>
-    <p style="font-size:11px;color:var(--t3);margin-top:10px">⚠ ID нельзя менять после создания</p>
   </div>
 
   <div class="clients-grid" id="clientsGrid"></div>
@@ -125,7 +129,7 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-h
     <input type="hidden" id="editIdx">
     <div class="fg"><label class="fl">Название</label><input class="fi" id="editName"></div>
     <div class="fg"><label class="fl">ID (нельзя менять)</label><input class="fi" id="editIdShow" readonly style="opacity:.5"></div>
-    <div class="fg"><label class="fl">Заметка</label><input class="fi" id="editNote" placeholder="Контакт, адрес..."></div>
+    <div class="fg"><label class="fl">Заметка</label><input class="fi" id="editNote"></div>
     <div class="ma">
       <button class="btn btn-s" id="editCancelBtn">Отмена</button>
       <button class="btn btn-p" id="editSaveBtn">Сохранить</button>
@@ -134,37 +138,17 @@ body{font-family:'Manrope',sans-serif;background:var(--bg);color:var(--t1);min-h
 </div>
 
 <script>
-// ===== CONFIG =====
 var ADMIN_PIN = '0000';
-var FB_CFG = {
-  url: 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app',
-  key: 'AIzaSyCgAIqHPNED6KZcXRfXTNDf5Qw4xy1CPF8',
-  project: 'zarpay-50ed2'
-};
+var DB_URL = 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app';
 var BASE_URL = window.location.origin + window.location.pathname.replace('admin.html','') + 'index.html';
-
-// ===== FIREBASE =====
-var FB_APP = null, FB_DB = null;
-function initFB(){
-  if(FB_APP) return;
-  try{
-    FB_APP = firebase.initializeApp({
-      apiKey: FB_CFG.key,
-      databaseURL: FB_CFG.url,
-      projectId: FB_CFG.project,
-      appId: '1:000000000000:web:zarpay000000000000'
-    });
-    FB_DB = firebase.database();
-    var fbEl = document.getElementById('fbStatus');
-    if(fbEl) fbEl.innerHTML = '<span style="color:var(--grn)">🟢 Firebase: '+FB_CFG.project+'</span>';
-  }catch(e){
-    var fbEl = document.getElementById('fbStatus');
-    if(fbEl) fbEl.innerHTML = '<span style="color:var(--yel)">⚠ Firebase ошибка</span>';
-  }
-}
+var clients = [];
+var fbData = {}; // Cache of Firebase data per client
 
 // ===== LOCK =====
 var unlocked = sessionStorage.getItem('zp_admin_ok') === '1';
+
+document.getElementById('lockBtn').addEventListener('click', doLogin);
+document.getElementById('lockInput').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 
 function doLogin(){
   var val = document.getElementById('lockInput').value.trim();
@@ -172,70 +156,121 @@ function doLogin(){
     sessionStorage.setItem('zp_admin_ok','1');
     document.getElementById('lockScreen').style.display = 'none';
     document.getElementById('appContent').style.display = 'block';
-    initFB();
     load(); render();
+    loadAllFirebaseData();
   } else {
     document.getElementById('lockErr').textContent = 'Неверный пароль';
     document.getElementById('lockInput').value = '';
-    setTimeout(function(){ document.getElementById('lockErr').textContent = ''; }, 2000);
+    setTimeout(function(){ document.getElementById('lockErr').textContent=''; }, 2000);
   }
 }
 
-document.getElementById('lockBtn').addEventListener('click', doLogin);
-document.getElementById('lockInput').addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 document.getElementById('logoutBtn').addEventListener('click', function(){
   sessionStorage.removeItem('zp_admin_ok');
   location.reload();
 });
 
-// Auto-unlock
 if(unlocked){
   document.getElementById('lockScreen').style.display = 'none';
   document.getElementById('appContent').style.display = 'block';
-  setTimeout(function(){ initFB(); load(); render(); }, 100);
+  setTimeout(function(){ load(); render(); loadAllFirebaseData(); }, 100);
+}
+
+// ===== FIREBASE =====
+function fbGet(clientId){
+  return fetch(DB_URL + '/zarpay/' + clientId + '.json')
+    .then(function(r){ return r.json(); })
+    .catch(function(){ return null; });
+}
+
+function loadAllFirebaseData(){
+  document.getElementById('fbStatus').innerHTML = '<span style="color:var(--yel)">Загрузка...</span>';
+  var promises = clients.map(function(c){
+    return fbGet(c.id).then(function(data){
+      fbData[c.id] = data;
+    });
+  });
+  Promise.all(promises).then(function(){
+    document.getElementById('fbStatus').innerHTML = '<span style="color:var(--grn)">🟢 Firebase</span>';
+    render();
+  });
+}
+
+document.getElementById('refreshAllBtn').addEventListener('click', function(){
+  loadAllFirebaseData();
+  notif('Обновляем данные...');
+});
+
+// ===== TIME UTILS =====
+function timeAgo(ts){
+  if(!ts) return 'никогда';
+  var diff = Date.now() - ts;
+  var mins = Math.floor(diff / 60000);
+  var hours = Math.floor(diff / 3600000);
+  var days = Math.floor(diff / 86400000);
+  if(diff < 60000) return 'только что';
+  if(mins < 60) return mins + ' мин. назад';
+  if(hours < 24) return hours + ' ч. назад';
+  return days + ' дн. назад';
+}
+
+function syncDotClass(ts){
+  if(!ts) return 'never';
+  var diff = Date.now() - ts;
+  if(diff < 3600000) return 'ok'; // < 1 hour
+  if(diff < 86400000) return 'old'; // < 1 day
+  return 'never';
 }
 
 // ===== DATA =====
-var clients = [];
 function load(){
   try{ var r=localStorage.getItem('zarpay_admin_clients'); if(r) clients=JSON.parse(r); }catch(e){ clients=[]; }
 }
-function save(){
+function save2(){
   localStorage.setItem('zarpay_admin_clients', JSON.stringify(clients));
 }
 
 // ===== RENDER =====
 function render(){
-  var count = clients.length;
-  document.getElementById('clientCount').textContent = count + ' заведений';
+  document.getElementById('clientCount').textContent = clients.length + ' завед.';
   var grid = document.getElementById('clientsGrid');
-  if(!count){
-    grid.innerHTML = '<div class="empty" style="grid-column:1/-1"><div style="font-size:40px;margin-bottom:12px">🏢</div><p>Нет заведений. Добавьте первое!</p></div>';
+  if(!clients.length){
+    grid.innerHTML = '<div class="empty"><div style="font-size:40px;margin-bottom:12px">🏢</div><p>Нет заведений</p></div>';
     return;
   }
   var html = '';
   clients.forEach(function(c, i){
-    var link = buildLink(c.id);
-    html += '<div class="client-card">'+
-      '<div class="client-top">'+
-        '<div class="client-avatar">'+c.name.charAt(0).toUpperCase()+'</div>'+
-        '<div style="flex:1"><div class="client-name">'+c.name+'</div><div class="client-id">id: '+c.id+'</div></div>'+
-        '<span style="font-size:11px;color:var(--grn)">● активен</span>'+
+    var fb = fbData[c.id];
+    var ts = fb && fb.cfg ? fb.cfg.updatedAt : 0;
+    var staff = fb && fb.staff ? fb.staff.length : '—';
+    var shifts = fb && fb.shifts ? fb.shifts.length : '—';
+    var pin = fb && fb.cfg && fb.cfg.pin ? fb.cfg.pin : '—';
+    var dotClass = syncDotClass(ts);
+    var link = BASE_URL + '?id=' + c.id;
+
+    html += '<div class="card">'+
+      '<div class="card-top">'+
+        '<div class="avatar">'+c.name.charAt(0).toUpperCase()+'</div>'+
+        '<div style="flex:1"><div class="card-name">'+c.name+'</div><div class="card-id">id: '+c.id+'</div></div>'+
       '</div>'+
-      '<div class="client-link" data-id="'+c.id+'" data-action="copy">📋 '+link.slice(0,55)+(link.length>55?'...':'')+'</div>'+
+      '<div class="sync-row">'+
+        '<span class="sync-dot '+dotClass+'"></span>'+
+        '<span class="sync-time">Синхр.: <b>'+timeAgo(ts)+'</b></span>'+
+        '<span class="sync-stats">'+staff+' сотр. · '+shifts+' смен</span>'+
+      '</div>'+
       '<div class="pin-row">'+
         '<span style="color:var(--t3)">🔐 PIN:</span>'+
-        '<span class="pin-val" id="pin-'+c.id+'">••••</span>'+
-        '<button class="btn btn-s btn-sm" data-id="'+c.id+'" data-action="pin">👁 Показать</button>'+
-        '<button class="btn btn-s btn-sm" data-id="'+c.id+'" data-action="hide" style="display:none" id="hide-'+c.id+'">🙈 Скрыть</button>'+
+        '<span class="pin-val" id="pin-'+c.id+'">'+pin+'</span>'+
+        '<button class="btn btn-s btn-sm" data-id="'+c.id+'" data-action="reload-pin">↺</button>'+
       '</div>'+
-      '<div class="row">'+
+      '<div class="card-link" data-id="'+c.id+'" data-action="copy">📋 '+link.slice(0,55)+(link.length>55?'...':'')+'</div>'+
+      '<div class="card-actions">'+
         '<button class="btn btn-p btn-sm" data-id="'+c.id+'" data-action="open">🔗 Открыть</button>'+
         '<button class="btn btn-s btn-sm" data-id="'+c.id+'" data-action="copy">📋 Скопировать</button>'+
         '<button class="btn btn-s btn-sm" data-idx="'+i+'" data-action="edit">✏️</button>'+
         '<button class="btn btn-d btn-sm" data-idx="'+i+'" data-action="del">✕</button>'+
       '</div>'+
-      (c.note ? '<div class="client-note">📝 '+c.note+'</div>' : '')+
+      (c.note ? '<div class="card-note">📝 '+c.note+'</div>' : '')+
     '</div>';
   });
   grid.innerHTML = html;
@@ -249,99 +284,77 @@ document.getElementById('clientsGrid').addEventListener('click', function(e){
   var id = el.getAttribute('data-id');
   var idx = parseInt(el.getAttribute('data-idx'));
 
-  if(action === 'open') window.open(buildLink(id), '_blank');
+  if(action === 'open') window.open(BASE_URL + '?id=' + id, '_blank');
   if(action === 'copy') copyLink(id);
-  if(action === 'pin') loadPin(id);
-  if(action === 'hide'){
-    document.getElementById('pin-'+id).textContent = '••••';
-    el.style.display = 'none';
-    var showBtn = document.querySelector('[data-id="'+id+'"][data-action="pin"]');
-    if(showBtn) showBtn.style.display = '';
+  if(action === 'reload-pin'){
+    var pinEl = document.getElementById('pin-'+id);
+    if(pinEl) pinEl.textContent = '...';
+    fbGet(id).then(function(data){
+      fbData[id] = data;
+      var pin = data && data.cfg && data.cfg.pin ? data.cfg.pin : '—';
+      if(pinEl) pinEl.textContent = pin;
+    });
   }
   if(action === 'edit') openEdit(idx);
   if(action === 'del') deleteClient(idx);
 });
 
-// ===== ACTIONS =====
-function buildLink(id){
-  return BASE_URL + '?id=' + id;
-}
-
 function copyLink(id){
-  var link = buildLink(id);
+  var link = BASE_URL + '?id=' + id;
   if(navigator.clipboard){ navigator.clipboard.writeText(link).then(function(){ notif('Ссылка скопирована ✓'); }); }
   else { var ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); notif('Ссылка скопирована ✓'); }
 }
 
-function loadPin(id){
-  var el = document.getElementById('pin-'+id);
-  var hideBtn = document.getElementById('hide-'+id);
-  var showBtn = document.querySelector('[data-id="'+id+'"][data-action="pin"]');
-  if(!el){ return; }
-  el.textContent = '...';
-  if(!FB_DB){ el.textContent = 'нет FB'; return; }
-  FB_DB.ref('zarpay/'+id+'/cfg/pin').once('value').then(function(snap){
-    var pin = snap.val() || '1234';
-    el.textContent = pin;
-    if(hideBtn) hideBtn.style.display = '';
-    if(showBtn) showBtn.style.display = 'none';
-  }).catch(function(){ el.textContent = 'ошибка'; });
-}
-
-// ===== ADD CLIENT =====
+// ===== ADD =====
 document.getElementById('addBtn').addEventListener('click', function(){
-  document.getElementById('addForm').style.display = 'block';
+  document.getElementById('addForm').style.display='block';
   document.getElementById('newName').focus();
 });
 document.getElementById('addCancelBtn').addEventListener('click', function(){
-  document.getElementById('addForm').style.display = 'none';
-  document.getElementById('newName').value = '';
-  document.getElementById('newId').value = '';
-  document.getElementById('newNote').value = '';
+  document.getElementById('addForm').style.display='none';
+  document.getElementById('newName').value='';
+  document.getElementById('newId').value='';
+  document.getElementById('newNote').value='';
 });
 document.getElementById('newName').addEventListener('input', function(){
   document.getElementById('newId').value = this.value.toLowerCase()
     .replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'').slice(0,20);
 });
 document.getElementById('addSubmitBtn').addEventListener('click', function(){
-  var name = document.getElementById('newName').value.trim();
-  var id = document.getElementById('newId').value.trim().replace(/[^a-zA-Z0-9_-]/g,'');
-  var note = document.getElementById('newNote').value.trim();
+  var name=document.getElementById('newName').value.trim();
+  var id=document.getElementById('newId').value.trim().replace(/[^a-zA-Z0-9_-]/g,'');
+  var note=document.getElementById('newNote').value.trim();
   if(!name){ notif('Введите название','er'); return; }
   if(!id){ notif('Введите ID','er'); return; }
   if(clients.find(function(c){ return c.id===id; })){ notif('Такой ID уже есть!','er'); return; }
-  clients.push({ id:id, name:name, note:note, createdAt: new Date().toLocaleDateString('ru-RU') });
-  save();
+  clients.push({id:id,name:name,note:note});
+  save2();
   document.getElementById('addCancelBtn').click();
-  render();
+  fbGet(id).then(function(data){ fbData[id]=data; render(); });
   notif('Заведение добавлено ✓');
 });
 
 // ===== EDIT =====
 function openEdit(i){
-  var c = clients[i];
-  document.getElementById('editIdx').value = i;
-  document.getElementById('editName').value = c.name;
-  document.getElementById('editIdShow').value = c.id;
-  document.getElementById('editNote').value = c.note||'';
+  var c=clients[i];
+  document.getElementById('editIdx').value=i;
+  document.getElementById('editName').value=c.name;
+  document.getElementById('editIdShow').value=c.id;
+  document.getElementById('editNote').value=c.note||'';
   document.getElementById('editModal').classList.add('on');
 }
-document.getElementById('editCancelBtn').addEventListener('click', function(){
-  document.getElementById('editModal').classList.remove('on');
-});
+document.getElementById('editCancelBtn').addEventListener('click', function(){ document.getElementById('editModal').classList.remove('on'); });
 document.getElementById('editSaveBtn').addEventListener('click', function(){
-  var i = parseInt(document.getElementById('editIdx').value);
-  clients[i].name = document.getElementById('editName').value.trim();
-  clients[i].note = document.getElementById('editNote').value.trim();
-  save(); document.getElementById('editModal').classList.remove('on'); render(); notif('Обновлено ✓');
+  var i=parseInt(document.getElementById('editIdx').value);
+  clients[i].name=document.getElementById('editName').value.trim();
+  clients[i].note=document.getElementById('editNote').value.trim();
+  save2(); document.getElementById('editModal').classList.remove('on'); render(); notif('Обновлено ✓');
 });
-document.getElementById('editModal').addEventListener('click', function(e){
-  if(e.target===this) this.classList.remove('on');
-});
+document.getElementById('editModal').addEventListener('click',function(e){if(e.target===this)this.classList.remove('on');});
 
 function deleteClient(i){
   if(!confirm('Удалить "'+clients[i].name+'" из списка?')) return;
-  clients.splice(i,1); save(); render(); notif('Удалено');
+  clients.splice(i,1); save2(); render(); notif('Удалено');
 }
 
 // ===== NOTIFY =====
@@ -353,6 +366,13 @@ function notif(msg,type){
   setTimeout(function(){n.style.opacity='0';n.style.transition='opacity .4s';},2500);
   setTimeout(function(){if(n.parentNode)n.parentNode.removeChild(n);},3000);
 }
+
+// Auto-refresh every 30 seconds
+setInterval(function(){
+  if(unlocked || sessionStorage.getItem('zp_admin_ok')==='1'){
+    loadAllFirebaseData();
+  }
+}, 30000);
 </script>
 </body>
 </html>
