@@ -1376,9 +1376,17 @@ function initFirebase(cfg){
     .then(function(r){ return r.json(); })
     .then(function(remoteData){
       if(remoteData && remoteData.staff && remoteData.week){
-        var hasLocal = D.staff && D.staff.length > 0;
-        if(!hasLocal){
-          // New device - load from Firebase
+        var localTs  = D.cfg && D.cfg.updatedAt ? D.cfg.updatedAt : 0;
+        var remoteTs = remoteData.cfg && remoteData.cfg.updatedAt ? remoteData.cfg.updatedAt : 0;
+        var localShifts  = D.shifts  ? D.shifts.length  : 0;
+        var remoteShifts = remoteData.shifts ? remoteData.shifts.length : 0;
+
+        // Use remote data if: no local data, or remote is newer (by timestamp or more shifts)
+        var useRemote = !D.staff || D.staff.length === 0 ||
+                        remoteTs > localTs ||
+                        (remoteTs === localTs && remoteShifts > localShifts);
+
+        if(useRemote){
           D.staff   = remoteData.staff   || [];
           D.shifts  = remoteData.shifts  || [];
           D.deds    = remoteData.deds    || [];
@@ -1387,9 +1395,8 @@ function initFirebase(cfg){
           if(remoteData.cfg) D.cfg = remoteData.cfg;
           try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
           winfo(); rdash();
-          setSyncStatus('online');
         } else {
-          // Has local data - push to Firebase
+          // Local is newer - push to Firebase
           save();
         }
       } else {
@@ -1408,23 +1415,24 @@ function initFirebase(cfg){
       .then(function(r){ return r.json(); })
       .then(function(remoteData){
         if(!remoteData || !remoteData.staff) return;
-        var remoteStr = JSON.stringify({staff:remoteData.staff.length, shifts:(remoteData.shifts||[]).length});
+        var remoteStr = JSON.stringify({staff:remoteData.staff.length, shifts:(remoteData.shifts||[]).length, ts: remoteData.cfg && remoteData.cfg.updatedAt ? remoteData.cfg.updatedAt : 0});
         if(window._fbLastData === remoteStr) return; // No change
         window._fbLastData = remoteStr;
-        // Check if remote is newer (more shifts)
-        var localShifts = D.shifts ? D.shifts.length : 0;
-        var remoteShifts = remoteData.shifts ? remoteData.shifts.length : 0;
-        if(remoteShifts !== localShifts || remoteData.staff.length !== (D.staff ? D.staff.length : 0)){
-          D.staff   = remoteData.staff   || [];
-          D.shifts  = remoteData.shifts  || [];
-          D.deds    = remoteData.deds    || [];
-          D.history = remoteData.history || [];
-          D.week    = remoteData.week    || D.week;
-          if(remoteData.cfg) D.cfg = remoteData.cfg;
-          try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
-          winfo(); rdash();
-          setSyncStatus('online');
-        }
+
+        // Only apply remote if it's newer than local
+        var localTs  = D.cfg && D.cfg.updatedAt ? D.cfg.updatedAt : 0;
+        var remoteTs = remoteData.cfg && remoteData.cfg.updatedAt ? remoteData.cfg.updatedAt : 0;
+        if(remoteTs <= localTs) return; // Local is newer, skip
+
+        D.staff   = remoteData.staff   || [];
+        D.shifts  = remoteData.shifts  || [];
+        D.deds    = remoteData.deds    || [];
+        D.history = remoteData.history || [];
+        D.week    = remoteData.week    || D.week;
+        if(remoteData.cfg) D.cfg = remoteData.cfg;
+        try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+        winfo(); rdash();
+        setSyncStatus('online');
       })
       .catch(function(){});
   }, 5000);
@@ -1443,6 +1451,9 @@ function disconnectFirebase(){
 
 // Save locally + push to Firebase via REST (works on ALL browsers + Safari)
 function save(){
+  // Add timestamp so devices know which data is newer
+  if(!D.cfg) D.cfg = {};
+  D.cfg.updatedAt = Date.now();
   try{ if(_lsAvailable) localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
   setSyncStatus('syncing');
   fetch(DB_URL + '/zarpay/' + CLIENT_ID + '.json', {
