@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ZarPay — Учёт зарплаты</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1367,103 +1365,71 @@ function connectFirebase(){
 }
 
 function initFirebase(cfg){
-  try {
-    // Cleanup existing app properly
-    if(fbRef){ try{ fbRef.off(); }catch(e){} fbRef=null; }
-    if(fbDb){ fbDb=null; }
-    // Delete existing firebase app - Safari compatible way
-    try{
-      if(firebase.apps && firebase.apps.length > 0){
-        for(var i=0; i<firebase.apps.length; i++){
-          try{ firebase.apps[i].delete(); }catch(e){}
+  // Use REST API polling instead of WebSocket (more compatible with Safari)
+  fbConnected = true;
+  var st = document.getElementById('fbStatus');
+  if(st) st.innerHTML = '<span style="color:var(--grn)">✓ Подключено (REST)</span>';
+  setSyncStatus('online');
+  
+  // Initial load from Firebase
+  fetch(DB_URL + '/zarpay/' + CLIENT_ID + '.json')
+    .then(function(r){ return r.json(); })
+    .then(function(remoteData){
+      if(remoteData && remoteData.staff && remoteData.week){
+        var hasLocal = D.staff && D.staff.length > 0;
+        if(!hasLocal){
+          // New device - load from Firebase
+          D.staff   = remoteData.staff   || [];
+          D.shifts  = remoteData.shifts  || [];
+          D.deds    = remoteData.deds    || [];
+          D.history = remoteData.history || [];
+          D.week    = remoteData.week    || D.week;
+          if(remoteData.cfg) D.cfg = remoteData.cfg;
+          try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+          winfo(); rdash();
+          setSyncStatus('online');
+        } else {
+          // Has local data - push to Firebase
+          save();
         }
+      } else {
+        // Firebase empty - push local data
+        save();
       }
-    }catch(e){}
-    // Also try named app delete
-    try{ firebase.app().delete(); }catch(e){}
+    })
+    .catch(function(){ setSyncStatus('offline'); });
 
-    var firebaseConfig = {
-      apiKey: cfg.key,
-      databaseURL: cfg.url,
-      projectId: cfg.project,
-      appId: '1:000000000000:web:zarpay000000000000'
-    };
-
-    fbApp = firebase.initializeApp(firebaseConfig);
-    fbDb = firebase.database(fbApp);
-    fbRef = fbDb.ref('zarpay/' + CLIENT_ID);
-    fbConnected = true;
-    
-    // Push current local data to Firebase immediately on connect
-    setSyncStatus('syncing');
-    fbRef.set(D).then(function(){
-      setSyncStatus('online');
-    }).catch(function(e){ setSyncStatus('offline'); });
-
-    setSyncStatus('syncing');
-
-    // Track if this device has local data
-    var _hasLocalData = (D.staff && D.staff.length > 0);
-    var _fbIgnoreNext = false;
-    var _lastSaveTime = 0;
-
-    fbRef.on('value', function(snapshot){
-      setSyncStatus('online');
-      var remoteData = snapshot.val();
-
-      // Firebase empty - push our local data
-      if(!remoteData || !remoteData.staff || !remoteData.week){
-        if(_hasLocalData){
-          _fbIgnoreNext = true;
-          _lastSaveTime = Date.now();
-          fbRef.set(JSON.parse(JSON.stringify(D)));
+  // Poll for changes every 5 seconds
+  if(window._fbPollInterval) clearInterval(window._fbPollInterval);
+  window._fbLastData = null;
+  window._fbPollInterval = setInterval(function(){
+    if(document.hidden) return; // Skip if tab not visible
+    fetch(DB_URL + '/zarpay/' + CLIENT_ID + '.json')
+      .then(function(r){ return r.json(); })
+      .then(function(remoteData){
+        if(!remoteData || !remoteData.staff) return;
+        var remoteStr = JSON.stringify({staff:remoteData.staff.length, shifts:(remoteData.shifts||[]).length});
+        if(window._fbLastData === remoteStr) return; // No change
+        window._fbLastData = remoteStr;
+        // Check if remote is newer (more shifts)
+        var localShifts = D.shifts ? D.shifts.length : 0;
+        var remoteShifts = remoteData.shifts ? remoteData.shifts.length : 0;
+        if(remoteShifts !== localShifts || remoteData.staff.length !== (D.staff ? D.staff.length : 0)){
+          D.staff   = remoteData.staff   || [];
+          D.shifts  = remoteData.shifts  || [];
+          D.deds    = remoteData.deds    || [];
+          D.history = remoteData.history || [];
+          D.week    = remoteData.week    || D.week;
+          if(remoteData.cfg) D.cfg = remoteData.cfg;
+          try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+          winfo(); rdash();
+          setSyncStatus('online');
         }
-        return;
-      }
-
-      // Skip our own echo - ignore for 3 seconds after we saved
-      if(_fbIgnoreNext || (Date.now() - _lastSaveTime < 3000)){
-        _fbIgnoreNext = false;
-        return;
-      }
-
-      // Always apply remote data (especially important for new devices with no local data)
-      D.staff   = remoteData.staff   || [];
-      D.shifts  = remoteData.shifts  || [];
-      D.deds    = remoteData.deds    || [];
-      D.history = remoteData.history || [];
-      D.week    = remoteData.week    || D.week;
-      if(remoteData.cfg) D.cfg = remoteData.cfg;
-
-      // Update local backup
-      try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
-      _hasLocalData = true;
-
-      // Refresh UI on current page
-      winfo();
-      var ap = document.querySelector('.page.on');
-      if(ap){
-        var pid = ap.id.replace('p-','');
-        if(pid==='dash') rdash();
-        else if(pid==='week') rweek();
-        else if(pid==='staff') rstaff();
-        else if(pid==='ded') rded();
-        else if(pid==='hist') rhist();
-      }
-    }, function(err){
-      setSyncStatus('offline');
-      notif('Ошибка синхронизации: ' + err.message, 'er');
-    });
-
-    var st = document.getElementById('fbStatus');
-    if(st) st.innerHTML = '<span style="color:var(--grn)">✓ Подключено к ' + cfg.project + '</span>';
-    notif('Firebase подключён ✓');
-
-  } catch(err){
-    setSyncStatus('offline');
-    notif('Ошибка подключения: ' + err.message, 'er');
-  }
+      })
+      .catch(function(){});
+  }, 5000);
 }
+
 
 function disconnectFirebase(){
   if(fbRef){ fbRef.off(); }
@@ -1475,19 +1441,18 @@ function disconnectFirebase(){
   notif('Синхронизация отключена');
 }
 
-// Override save to also push to Firebase
+// Save locally + push to Firebase via REST (works on ALL browsers + Safari)
 function save(){
   try{ if(_lsAvailable) localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
-  if(fbConnected && fbRef){
-    setSyncStatus('syncing');
-    if(typeof _fbIgnoreNext !== 'undefined') _fbIgnoreNext = true;
-    fbRef.set(D).then(function(){
-      setSyncStatus('online');
-    }).catch(function(err){
-      setSyncStatus('offline');
-      if(typeof _fbIgnoreNext !== 'undefined') _fbIgnoreNext = false;
-    });
-  }
+  setSyncStatus('syncing');
+  fetch(DB_URL + '/zarpay/' + CLIENT_ID + '.json', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(D)
+  }).then(function(r){
+    if(r.ok){ setSyncStatus('online'); }
+    else { setSyncStatus('offline'); }
+  }).catch(function(){ setSyncStatus('offline'); });
 }
 
 // Auto-reconnect Firebase on load
@@ -1520,53 +1485,31 @@ function tryAutoConnectFirebase(){
 })();
 
 function forceSync(){
-  notif('Загружаем из Firebase...');
+  notif('Загружаем данные...');
+  var DB_URL = 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app';
+  var path = '/zarpay/' + CLIENT_ID + '.json';
   
-  var FB_CFG_LOCAL = {
-    url: 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app',
-    key: 'AIzaSyCgAIqHPNED6KZcXRfXTNDf5Qw4xy1CPF8',
-    project: 'zarpay-50ed2'
-  };
-
-  function applyData(d){
-    if(!d){ notif('Firebase пуст для '+CLIENT_ID,'er'); return; }
-    D.staff   = d.staff   || [];
-    D.shifts  = d.shifts  || [];
-    D.deds    = d.deds    || [];
-    D.history = d.history || [];
-    if(d.week) D.week = d.week;
-    if(d.cfg)  D.cfg  = d.cfg;
-    try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
-    winfo(); rdash();
-    notif('✓ Загружено: '+D.staff.length+' сотр., '+D.shifts.length+' смен');
-  }
-
-  // Use existing connection if available
-  if(fbConnected && fbRef){
-    fbRef.once('value').then(function(snap){ applyData(snap.val()); })
-    .catch(function(e){ notif('Ошибка: '+e.message,'er'); });
-    return;
-  }
-
-  // No connection — create temp one
-  try{
-    var tmpName = 'tmp'+Date.now();
-    var tmpApp = firebase.initializeApp({
-      apiKey: FB_CFG_LOCAL.key,
-      databaseURL: FB_CFG_LOCAL.url,
-      projectId: FB_CFG_LOCAL.project,
-      appId: '1:000000000000:web:zarpay'
-    }, tmpName);
-    firebase.database(tmpApp).ref('zarpay/'+CLIENT_ID).once('value')
-    .then(function(snap){
-      applyData(snap.val());
-      try{ tmpApp.delete(); }catch(e){}
+  fetch(DB_URL + path)
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(!d || d.error){
+        notif('Нет данных в Firebase для ' + CLIENT_ID, 'er');
+        return;
+      }
+      D.staff   = d.staff   || [];
+      D.shifts  = d.shifts  || [];
+      D.deds    = d.deds    || [];
+      D.history = d.history || [];
+      if(d.week) D.week = d.week;
+      if(d.cfg)  D.cfg  = d.cfg;
+      try{ localStorage.setItem(STORE_KEY, JSON.stringify(D)); }catch(e){}
+      winfo(); rdash();
+      setSyncStatus('online');
+      notif('✓ Загружено: ' + D.staff.length + ' сотр., ' + D.shifts.length + ' смен');
     })
     .catch(function(e){
-      try{ tmpApp.delete(); }catch(e2){}
-      notif('Ошибка: '+e.message,'er');
+      notif('Ошибка: ' + e.message, 'er');
     });
-  }catch(e){ notif('Firebase ошибка: '+e.message,'er'); }
 }
 
 
