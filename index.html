@@ -1535,6 +1535,7 @@ var CLIENT_ID = (function(){
   return id.replace(/[^a-zA-Z0-9_-]/g,'').slice(0,30) || 'default';
 })();
 var STORE_KEY = 'zp2_' + CLIENT_ID;
+var DB_URL = 'https://zarpay-50ed2-default-rtdb.europe-west1.firebasedatabase.app';
 
 // Safari private mode fix - test localStorage availability
 var _lsAvailable = (function(){
